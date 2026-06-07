@@ -4,7 +4,15 @@ import { promises as fs } from "fs";
 import path from "path";
 import { seedStore } from "@/data/seed";
 import { buildLeadArtifacts, classifyLead, isSafetyCritical, recommendationFor } from "@/lib/hermes";
-import type { InteractionEvent, Lead, LeadType, Store } from "@/lib/types";
+import {
+  applyDecision as sbApplyDecision,
+  findApproval as sbFindApproval,
+  insertEvent as sbInsertEvent,
+  insertLead as sbInsertLead,
+  readStore as sbReadStore,
+  supabaseConfigured
+} from "@/lib/supabase";
+import type { ApprovalRequest, HermesActivity, InteractionEvent, Lead, LeadType, Store } from "@/lib/types";
 
 const dataDir = process.env.DATA_DIR || path.join(process.cwd(), ".data");
 const runtimePath = path.join(dataDir, "conquistador-store.json");
@@ -31,6 +39,7 @@ async function writeLocalStore(store: Store) {
 }
 
 export async function getStore(): Promise<Store> {
+  if (supabaseConfigured()) return sbReadStore();
   return readLocalStore();
 }
 
@@ -43,6 +52,10 @@ export async function recordEvent(
     createdAt: partial.createdAt ?? new Date().toISOString(),
     ...partial
   };
+  if (supabaseConfigured()) {
+    await sbInsertEvent(event);
+    return event;
+  }
   const store = await readLocalStore();
   store.events.unshift(event);
   await writeLocalStore(store);
@@ -119,6 +132,11 @@ export async function createLead(form: FormData, fallbackType: LeadType) {
     });
   }
 
+  if (supabaseConfigured()) {
+    await sbInsertLead(lead, artifacts.approvals, artifacts.activity, events);
+    return lead;
+  }
+
   const store = await readLocalStore();
   store.leads.unshift(lead);
   store.approvalRequests.unshift(...artifacts.approvals);
@@ -141,16 +159,8 @@ export async function decideApproval(
   decidedBy = "Operator"
 ): Promise<boolean> {
   const at = new Date().toISOString();
-  const store = await readLocalStore();
-  const approval = store.approvalRequests.find((a) => a.id === id);
-  if (!approval) return false;
 
-  approval.status = decision;
-  approval.decidedAt = at;
-  approval.decisionNote = note;
-  approval.decidedBy = decidedBy;
-
-  store.hermesActivity.unshift({
+  const buildAudit = (approval: ApprovalRequest): HermesActivity => ({
     id: uid("act"),
     createdAt: at,
     module: "Approval Queue",
@@ -159,7 +169,7 @@ export async function decideApproval(
     relatedRecordId: approval.relatedRecordId
   });
 
-  store.events.unshift({
+  const buildSignal = (approval: ApprovalRequest): InteractionEvent => ({
     id: uid("evt"),
     createdAt: at,
     kind: "approval_decided",
@@ -172,16 +182,42 @@ export async function decideApproval(
     agreed: decision === "approved"
   });
 
+  if (supabaseConfigured()) {
+    const existing = await sbFindApproval(id);
+    if (!existing) return false;
+    const updated: ApprovalRequest = {
+      ...existing,
+      status: decision,
+      decidedAt: at,
+      decisionNote: note,
+      decidedBy
+    };
+    await sbApplyDecision(updated, buildAudit(updated), buildSignal(updated));
+    return true;
+  }
+
+  const store = await readLocalStore();
+  const approval = store.approvalRequests.find((a) => a.id === id);
+  if (!approval) return false;
+
+  approval.status = decision;
+  approval.decidedAt = at;
+  approval.decisionNote = note;
+  approval.decidedBy = decidedBy;
+
+  store.hermesActivity.unshift(buildAudit(approval));
+  store.events.unshift(buildSignal(approval));
+
   await writeLocalStore(store);
   return true;
 }
 
 export async function exportStoreJson() {
-  return JSON.stringify(await readLocalStore(), null, 2);
+  return JSON.stringify(await getStore(), null, 2);
 }
 
 export async function exportLeadsCsv() {
-  const store = await readLocalStore();
+  const store = await getStore();
   const rows = [
     ["createdAt", "type", "status", "name", "company", "phone", "email", "siteAddress", "zone", "safetyCritical"],
     ...store.leads.map((lead) => [

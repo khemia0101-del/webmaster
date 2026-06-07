@@ -19,3 +19,18 @@ src/data/local-store.runtime.json
 .qa-*.png
 tsconfig.tsbuildinfo
 tsconfig.check.tsbuildinfo
+
+# --- Large binaries / downloaded toolkits (not source; some exceed GitHub's 100MB limit) ---
+tools/
+shareable_chunks/
+SMALL_SHARE_FILES_UNDER_150MB_NEW/
+.azure-codex/
+*.mp4
+*.zip
+*.exe
+
+# --- Agent call history (local only, never publish transcripts) ---
+conquistador-oil-agent/data/
+*.db
+*.sqlite
+*.sqlite3

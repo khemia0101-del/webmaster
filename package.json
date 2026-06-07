@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.check.json"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.47.10",
     "clsx": "^2.1.1",
     "lucide-react": "^0.556.0",
     "next": "^16.2.6",

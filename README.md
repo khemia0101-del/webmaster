@@ -47,6 +47,16 @@ npm.cmd run lint
 npm.cmd run build
 ```
 
+## Autonomous Operations Agent
+
+The `conquistador-oil-agent/` directory contains a separate Python pipeline that
+sources local contractors (Google Places), places authorized outbound AI voice
+calls (Vapi), and records every call to a local store it can learn from. It runs
+independently of the website. See
+[`conquistador-oil-agent/README.md`](conquistador-oil-agent/README.md) for setup,
+cost, and privacy details. Run `python conquistador-oil-agent/run.py` for a free,
+no-credentials mock simulation of the full pipeline.
+
 ## Notes
 
 - Local and lowest-cost production mode uses `DATA_DIR/conquistador-store.json` when Supabase credentials are absent.
