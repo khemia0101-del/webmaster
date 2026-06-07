@@ -21,10 +21,12 @@ tsconfig.tsbuildinfo
 tsconfig.check.tsbuildinfo
 
 # --- Large binaries / downloaded toolkits (not source; some exceed GitHub's 100MB limit) ---
-tools/
-shareable_chunks/
-SMALL_SHARE_FILES_UNDER_150MB_NEW/
-.azure-codex/
+# NOTE: leading slash anchors these to the repo ROOT only, so nested source
+# directories like conquistador-oil-agent/tools/ are NOT excluded.
+/tools/
+/shareable_chunks/
+/SMALL_SHARE_FILES_UNDER_150MB_NEW/
+/.azure-codex/
 *.mp4
 *.zip
 *.exe
