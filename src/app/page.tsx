@@ -37,16 +37,19 @@ const trustHeadline = `Serving Lancaster since ${brandConfig.foundedYear} with h
 
 const trustImages = [
   {
-    alt: "Illustrated heating oil delivery truck placeholder",
-    src: "/brand/placeholder-oil-delivery.svg"
+    alt: "Heating oil delivery truck at a Lancaster home",
+    label: "Heating oil delivery",
+    src: "/brand/heating-oil-delivery-lancaster.png"
   },
   {
-    alt: "Illustrated HVAC service placeholder",
-    src: "/brand/placeholder-hvac-service.svg"
+    alt: "HVAC technician servicing heating equipment",
+    label: "HVAC service",
+    src: "/brand/hvac-service-technician.png"
   },
   {
-    alt: "Illustrated local service building placeholder",
-    src: "/brand/placeholder-local-building.svg"
+    alt: "Local Lancaster service building with work vans",
+    label: "Lancaster service area",
+    src: "/brand/local-service-building.png"
   }
 ];
 
@@ -87,6 +90,16 @@ export default async function Home() {
           </span>
         </div>
       </PageHero>
+      <Section className="py-8">
+        <div className="grid gap-4 md:grid-cols-3">
+          {trustImages.map((image) => (
+            <figure className="overflow-hidden rounded-lg border border-[#d8c2a6] bg-[#071d32] shadow-sm" key={image.src}>
+              <Image alt={image.alt} className="h-56 w-full object-cover" height={900} priority src={image.src} width={1200} />
+              <figcaption className="bg-[#fff9ee] px-4 py-3 text-sm font-bold text-[#0b2f4a]">{image.label}</figcaption>
+            </figure>
+          ))}
+        </div>
+      </Section>
       <Section className="grid gap-8 md:grid-cols-[1.1fr_.9fr]">
         <div>
           <h2 className="text-3xl font-bold">One place to request fuel delivery, heating service, and HVAC help.</h2>
