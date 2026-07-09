@@ -12,16 +12,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing experiment data." }, { status: 400 });
   }
 
-  await recordEvent({
-    kind: "experiment_impression",
-    source: "Website",
-    label: `${body.experimentId}:${body.variantId} impression`,
-    metadata: {
-      experimentId: body.experimentId,
-      variantId: body.variantId,
-      page: body.page ?? "/"
-    }
-  });
+  try {
+    await recordEvent({
+      kind: "experiment_impression",
+      source: "Website",
+      label: `${body.experimentId}:${body.variantId} impression`,
+      metadata: {
+        experimentId: body.experimentId,
+        variantId: body.variantId,
+        page: body.page ?? "/"
+      }
+    });
+  } catch (error) {
+    console.warn("Experiment impression could not be recorded", error);
+  }
 
   return NextResponse.json({ ok: true });
 }

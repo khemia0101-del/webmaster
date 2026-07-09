@@ -16,7 +16,9 @@ import {
 } from "@/lib/supabase";
 import type { ApprovalRequest, HermesActivity, InteractionEvent, Lead, LeadType, Store } from "@/lib/types";
 
-const dataDir = process.env.DATA_DIR || path.join(process.cwd(), ".data");
+const dataDir =
+  process.env.DATA_DIR ||
+  (process.env.VERCEL ? path.join("/tmp", "conquistador-data") : path.join(process.cwd(), ".data"));
 const runtimePath = path.join(dataDir, "conquistador-store.json");
 
 const uid = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
