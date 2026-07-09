@@ -28,9 +28,9 @@ export default async function AdminPage() {
     <Section className="grid gap-8">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
         <div>
-          <p className="text-sm font-bold uppercase tracking-wide text-[#b4412a]">Hermes governed operations</p>
+          <p className="text-sm font-bold uppercase tracking-wide text-[#b86a32]">Hermes governed operations</p>
           <h1 className="mt-2 text-4xl font-bold">Admin CRM Dashboard</h1>
-          <p className="mt-3 max-w-3xl text-[#68706c]">
+          <p className="mt-3 max-w-3xl text-[#5c6570]">
             Hermes drafts, classifies, scores, recommends, and reports. Money, legal terms, dispatch, contractor approval, public publishing, and safety remain human-gated.
           </p>
         </div>
@@ -46,24 +46,24 @@ export default async function AdminPage() {
 
       <Panel icon={<Gauge />} title="Production Readiness">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-[#68706c]">
+          <p className="text-sm text-[#5c6570]">
             Lowest-cost deployment uses persistent local file storage, admin credentials, and a public site URL. Supabase and paid APIs are optional later upgrades.
           </p>
           <Badge tone={productionReady ? "good" : "warn"}>{productionReady ? "Ready" : "Needs env setup"}</Badge>
         </div>
         <div className="mt-4 flex flex-wrap gap-3">
-          <a className="rounded-md bg-[#0f4c45] px-4 py-2 text-sm font-semibold text-white" href="/api/export/leads">
+          <a className="rounded-md bg-[#0b2f4a] px-4 py-2 text-sm font-semibold text-white" href="/api/export/leads">
             Export Leads CSV
           </a>
-          <a className="rounded-md border border-[#d8d1c3] bg-white px-4 py-2 text-sm font-semibold text-[#1d2525]" href="/api/export/store">
+          <a className="rounded-md border border-[#d8c2a6] bg-white px-4 py-2 text-sm font-semibold text-[#101827]" href="/api/export/store">
             Backup JSON
           </a>
         </div>
         <div className="mt-4 grid gap-2 md:grid-cols-3">
           {envChecks.map((check) => (
-            <div className="rounded-md border border-[#d8d1c3] bg-white p-3 text-sm" key={check.key}>
+            <div className="rounded-md border border-[#d8c2a6] bg-white p-3 text-sm" key={check.key}>
               <div className="font-bold">{check.label}</div>
-              <div className={check.present ? "mt-1 text-[#0f4c45]" : "mt-1 text-[#8d2f20]"}>
+              <div className={check.present ? "mt-1 text-[#0b2f4a]" : "mt-1 text-[#8d2f20]"}>
                 {check.present ? "Configured" : "Missing"} {check.requiredForProduction ? "(required)" : ""}
               </div>
             </div>
@@ -75,13 +75,27 @@ export default async function AdminPage() {
         <Panel icon={<ClipboardList />} title="Leads Inbox">
           <div className="grid gap-3">
             {store.leads.map((lead) => (
-              <article className="rounded-md border border-[#d8d1c3] bg-white p-4" key={lead.id}>
+              <article className="rounded-md border border-[#d8c2a6] bg-white p-4" key={lead.id}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h3 className="font-bold">{lead.company || lead.name}</h3>
                   <Badge tone={lead.safetyCritical ? "bad" : lead.status === "new" ? "neutral" : "warn"}>{lead.status}</Badge>
                 </div>
-                <p className="mt-1 text-sm text-[#68706c]">{lead.type.replaceAll("_", " ")} | {lead.zone} | {date(lead.createdAt)}</p>
+                <p className="mt-1 text-sm text-[#5c6570]">{lead.type.replaceAll("_", " ")} | {lead.zone} | {date(lead.createdAt)}</p>
                 <p className="mt-3 text-sm">{lead.hermesRecommendation}</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Badge tone={lead.hermesDeliveryStatus === "replied" || lead.hermesDeliveryStatus === "sent" ? "good" : lead.hermesDeliveryStatus === "failed" ? "bad" : "warn"}>
+                    Revenue Desk: {lead.hermesDeliveryStatus || "pending"}
+                  </Badge>
+                  <Badge tone={lead.outboundEmailStatus === "sent" ? "good" : lead.outboundEmailStatus === "failed" ? "bad" : "neutral"}>
+                    Email: {lead.outboundEmailStatus || "pending"}
+                  </Badge>
+                </div>
+                {lead.hermesReplyText ? (
+                  <details className="mt-3 rounded-md bg-[#f4eadb] p-3 text-sm">
+                    <summary className="cursor-pointer font-semibold text-[#0b2f4a]">Revenue Desk reply</summary>
+                    <pre className="mt-2 whitespace-pre-wrap font-sans text-[#263544]">{lead.hermesReplyText}</pre>
+                  </details>
+                ) : null}
               </article>
             ))}
           </div>
@@ -90,13 +104,13 @@ export default async function AdminPage() {
         <Panel icon={<AlertTriangle />} title="Approval Queue">
           <div className="grid gap-3">
             {store.approvalRequests.map((approval) => (
-              <article className="rounded-md border border-[#d8d1c3] bg-white p-4" key={approval.id}>
+              <article className="rounded-md border border-[#d8c2a6] bg-white p-4" key={approval.id}>
                 <div className="flex items-center justify-between gap-2">
                   <h3 className="font-bold">{approval.title}</h3>
                   <Badge tone={approval.riskLevel === "critical" || approval.riskLevel === "high" ? "bad" : "warn"}>{approval.riskLevel}</Badge>
                 </div>
-                <p className="mt-2 text-sm text-[#68706c]">{approval.summary}</p>
-                <p className="mt-3 text-xs font-semibold uppercase text-[#0f4c45]">{approval.type.replaceAll("_", " ")} | {approval.status}</p>
+                <p className="mt-2 text-sm text-[#5c6570]">{approval.summary}</p>
+                <p className="mt-3 text-xs font-semibold uppercase text-[#0b2f4a]">{approval.type.replaceAll("_", " ")} | {approval.status}</p>
               </article>
             ))}
           </div>
@@ -107,12 +121,12 @@ export default async function AdminPage() {
         <Panel icon={<UsersRound />} title="Contractors">
           <div className="grid gap-3">
             {store.contractors.map((contractor) => (
-              <article className="rounded-md border border-[#d8d1c3] bg-white p-4" key={contractor.id}>
+              <article className="rounded-md border border-[#d8c2a6] bg-white p-4" key={contractor.id}>
                 <div className="flex items-center justify-between gap-2">
                   <h3 className="font-bold">{contractor.company}</h3>
                   <Badge tone={contractor.status === "active" ? "good" : "warn"}>{contractor.status}</Badge>
                 </div>
-                <p className="mt-2 text-sm text-[#68706c]">{contractor.trades.join(", ")} | Score {contractor.score}</p>
+                <p className="mt-2 text-sm text-[#5c6570]">{contractor.trades.join(", ")} | Score {contractor.score}</p>
                 <p className="mt-2 text-sm">{contractorReadiness(contractor)}</p>
               </article>
             ))}
@@ -122,12 +136,12 @@ export default async function AdminPage() {
         <Panel icon={<Gauge />} title="Zones">
           <div className="grid gap-3">
             {store.zones.map((zone) => (
-              <article className="rounded-md border border-[#d8d1c3] bg-white p-4" key={zone.id}>
+              <article className="rounded-md border border-[#d8c2a6] bg-white p-4" key={zone.id}>
                 <div className="flex items-center justify-between">
                   <h3 className="font-bold">{zone.name} | {zone.trade}</h3>
                   <Badge tone={zone.status === "Green" || zone.status === "Gold" ? "good" : zone.status === "Yellow" ? "warn" : "bad"}>{zone.status}</Badge>
                 </div>
-                <p className="mt-2 text-sm text-[#68706c]">{zone.contractorCount} contractors, {zone.successfulJobs} successful jobs, {Math.round(zone.onTimeRate * 100)}% on-time</p>
+                <p className="mt-2 text-sm text-[#5c6570]">{zone.contractorCount} contractors, {zone.successfulJobs} successful jobs, {Math.round(zone.onTimeRate * 100)}% on-time</p>
               </article>
             ))}
           </div>
@@ -136,12 +150,12 @@ export default async function AdminPage() {
         <Panel icon={<FileCheck2 />} title="Documents">
           <div className="grid gap-3">
             {store.documents.map((doc) => (
-              <article className="rounded-md border border-[#d8d1c3] bg-white p-4" key={doc.id}>
+              <article className="rounded-md border border-[#d8c2a6] bg-white p-4" key={doc.id}>
                 <div className="flex items-center justify-between gap-2">
                   <h3 className="font-bold">{doc.type}</h3>
                   <Badge tone={doc.status === "verified" ? "good" : doc.status === "missing" ? "bad" : "warn"}>{doc.status}</Badge>
                 </div>
-                <p className="mt-2 text-sm text-[#68706c]">Contractor {doc.contractorId}{doc.expiresAt ? ` | Expires ${doc.expiresAt}` : ""}</p>
+                <p className="mt-2 text-sm text-[#5c6570]">Contractor {doc.contractorId}{doc.expiresAt ? ` | Expires ${doc.expiresAt}` : ""}</p>
               </article>
             ))}
           </div>
@@ -154,14 +168,14 @@ export default async function AdminPage() {
             {store.jobs.map((job) => {
               const check = evaluateJob(job);
               return (
-                <article className="rounded-md border border-[#d8d1c3] bg-white p-4" key={job.id}>
+                <article className="rounded-md border border-[#d8c2a6] bg-white p-4" key={job.id}>
                   <div className="flex items-center justify-between gap-2">
                     <h3 className="font-bold">{job.trade} | {job.zone}</h3>
                     <Badge tone={check.canRecommendRouting ? "good" : "bad"}>{job.paymentStatus}</Badge>
                   </div>
-                  <p className="mt-2 text-sm text-[#68706c]">Quote {money(job.quotedPrice)} | Cost {money(job.contractorCost)} | Spread {money(job.spread)}</p>
+                  <p className="mt-2 text-sm text-[#5c6570]">Quote {money(job.quotedPrice)} | Cost {money(job.contractorCost)} | Spread {money(job.spread)}</p>
                   <p className="mt-2 text-sm">{check.summary}</p>
-                  <p className="mt-2 text-sm font-semibold text-[#0f4c45]">{recommendDispatch(job, store.contractors, store.zones)}</p>
+                  <p className="mt-2 text-sm font-semibold text-[#0b2f4a]">{recommendDispatch(job, store.contractors, store.zones)}</p>
                 </article>
               );
             })}
@@ -179,7 +193,7 @@ export default async function AdminPage() {
               <Stat label="Approved contractors" value={latestKpi.approvedContractors} />
             </div>
           ) : (
-            <p className="text-sm text-[#68706c]">No KPI snapshot yet.</p>
+            <p className="text-sm text-[#5c6570]">No KPI snapshot yet.</p>
           )}
         </Panel>
       </div>
@@ -189,31 +203,31 @@ export default async function AdminPage() {
           {websiteExperiments.map((experiment) => {
             const rows = summarizeExperiment(experiment, store.events);
             return (
-              <article className="rounded-md border border-[#d8d1c3] bg-white p-4" key={experiment.id}>
+              <article className="rounded-md border border-[#d8c2a6] bg-white p-4" key={experiment.id}>
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <p className="text-xs font-bold uppercase text-[#b4412a]">{experiment.status} | {experiment.page}</p>
+                    <p className="text-xs font-bold uppercase text-[#b86a32]">{experiment.status} | {experiment.page}</p>
                     <h3 className="mt-1 text-lg font-bold">{experiment.name}</h3>
-                    <p className="mt-2 text-sm text-[#68706c]">{experiment.goal}</p>
+                    <p className="mt-2 text-sm text-[#5c6570]">{experiment.goal}</p>
                   </div>
                   <Badge tone={experiment.status === "active" ? "good" : "neutral"}>{experiment.variants.length} variants</Badge>
                 </div>
                 <div className="mt-4 grid gap-3 md:grid-cols-2">
                   {rows.map((row) => (
-                    <div className="rounded-md border border-[#ece6da] bg-[#fffdf8] p-4" key={row.id}>
+                    <div className="rounded-md border border-[#eadcc8] bg-[#fff9ee] p-4" key={row.id}>
                       <div className="flex items-center justify-between gap-2">
                         <h4 className="font-bold">{row.label}</h4>
-                        <span className="text-sm font-bold text-[#0f4c45]">{Math.round(row.conversionRate * 100)}%</span>
+                        <span className="text-sm font-bold text-[#0b2f4a]">{Math.round(row.conversionRate * 100)}%</span>
                       </div>
-                      <p className="mt-2 text-sm text-[#68706c]">{row.recommendationNote}</p>
+                      <p className="mt-2 text-sm text-[#5c6570]">{row.recommendationNote}</p>
                       <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-                        <span className="rounded bg-[#f7f4ee] px-3 py-2">Views: {row.impressions}</span>
-                        <span className="rounded bg-[#f7f4ee] px-3 py-2">Leads: {row.conversions}</span>
+                        <span className="rounded bg-[#f4eadb] px-3 py-2">Views: {row.impressions}</span>
+                        <span className="rounded bg-[#f4eadb] px-3 py-2">Leads: {row.conversions}</span>
                       </div>
                     </div>
                   ))}
                 </div>
-                <p className="mt-4 rounded-md bg-[#eef6f2] p-3 text-sm font-semibold text-[#0f4c45]">
+                <p className="mt-4 rounded-md bg-[#edf5f8] p-3 text-sm font-semibold text-[#0b2f4a]">
                   {hermesExperimentRecommendation(experiment, store.events)}
                 </p>
               </article>
@@ -225,11 +239,11 @@ export default async function AdminPage() {
       <Panel icon={<ClipboardList />} title="Hermes Activity Log">
         <div className="grid gap-3 md:grid-cols-2">
           {store.hermesActivity.map((activity) => (
-            <article className="rounded-md border border-[#d8d1c3] bg-white p-4" key={activity.id}>
-              <p className="text-xs font-bold uppercase text-[#b4412a]">{activity.module}</p>
+            <article className="rounded-md border border-[#d8c2a6] bg-white p-4" key={activity.id}>
+              <p className="text-xs font-bold uppercase text-[#b86a32]">{activity.module}</p>
               <h3 className="mt-1 font-bold">{activity.action}</h3>
-              <p className="mt-2 text-sm text-[#68706c]">{activity.result}</p>
-              <p className="mt-3 text-xs text-[#68706c]">{date(activity.createdAt)}</p>
+              <p className="mt-2 text-sm text-[#5c6570]">{activity.result}</p>
+              <p className="mt-3 text-xs text-[#5c6570]">{date(activity.createdAt)}</p>
             </article>
           ))}
         </div>
@@ -240,10 +254,10 @@ export default async function AdminPage() {
 
 function Panel({ title, icon, children }: { title: string; icon: ReactNode; children: ReactNode }) {
   return (
-    <section className="rounded-lg border border-[#d8d1c3] bg-[#fffdf8] p-5 shadow-sm">
-      <div className="mb-4 flex items-center gap-2 text-[#0f4c45]">
+    <section className="rounded-lg border border-[#d8c2a6] bg-[#fff9ee] p-5 shadow-sm">
+      <div className="mb-4 flex items-center gap-2 text-[#0b2f4a]">
         {icon}
-        <h2 className="text-xl font-bold text-[#1d2525]">{title}</h2>
+        <h2 className="text-xl font-bold text-[#101827]">{title}</h2>
       </div>
       {children}
     </section>

@@ -1,0 +1,8 @@
+.appdata
+.data
+.next
+.next-conquistador
+.config
+node_modules
+tsconfig.check.tsbuildinfo
+*.log

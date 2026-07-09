@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Gauge } from "lucide-react";
+import Image from "next/image";
 import { brandConfig } from "@/lib/config";
 import { ButtonLink } from "@/components/ui";
 
@@ -7,25 +7,30 @@ const nav = [
   ["HVAC", "/hvac-services"],
   ["Fuel Delivery", "/commercial-fuel-delivery-lancaster"],
   ["Emergency", "/emergency-service"],
-  ["Commercial Accounts", "/commercial-audit"]
+  ["Commercial Accounts", "/commercial-audit"],
+  ["Careers", "/careers"]
 ];
 
 export function SiteHeader() {
   return (
-    <header className="sticky top-0 z-40 border-b border-[#d8d1c3] bg-[#fffdf8]/95 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-3 md:px-8">
-        <Link className="flex min-w-0 items-center gap-3" href="/">
-          <span className="grid size-10 shrink-0 place-items-center rounded-md bg-[#0f4c45] text-white">
-            <Gauge size={22} />
-          </span>
+    <header className="sticky top-0 z-40 border-b border-[#c98a4a]/40 bg-[#071d32]/95 text-white shadow-sm backdrop-blur">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-5 py-3 md:gap-5 md:px-8 md:py-4">
+        <Link className="flex min-w-0 items-center gap-3 md:gap-4" href="/">
+          <Image
+            alt="Conquistador Oil logo"
+            className="h-14 w-14 shrink-0 rounded-lg bg-[#08263d] object-contain p-1 shadow-md ring-1 ring-[#c98a4a]/45 md:h-[72px] md:w-[72px]"
+            height={72}
+            src="/brand/conquistador-oil-logo.png"
+            width={72}
+          />
           <span className="min-w-0">
-            <span className="block truncate text-lg font-bold">{brandConfig.name}</span>
-            <span className="block truncate text-xs text-[#68706c]">{brandConfig.region}</span>
+            <span className="block truncate text-lg font-bold tracking-wide md:text-xl">{brandConfig.name}</span>
+            <span className="block truncate text-xs font-semibold uppercase tracking-wide text-[#e3b56e]">{brandConfig.region}</span>
           </span>
         </Link>
-        <nav className="hidden items-center gap-5 text-sm font-semibold text-[#394340] md:flex">
+        <nav className="hidden items-center gap-5 text-sm font-semibold text-white/82 md:flex">
           {nav.map(([label, href]) => (
-            <Link className="hover:text-[#b4412a]" href={href} key={href}>
+            <Link className="hover:text-[#e3b56e]" href={href} key={href}>
               {label}
             </Link>
           ))}

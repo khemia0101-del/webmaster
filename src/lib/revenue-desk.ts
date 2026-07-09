@@ -1,0 +1,209 @@
+import "server-only";
+
+import { brandConfig, coreServices, serviceAreas } from "@/lib/config";
+import { updateLeadRevenueDeskState } from "@/lib/store";
+import type { HermesActivity, InteractionEvent, Lead } from "@/lib/types";
+import { sendLeadReplyEmail } from "@/lib/zoho-mail";
+
+type RevenueDeskWebhookReply = {
+  subject?: string;
+  body?: string;
+  replySubject?: string;
+  replyBody?: string;
+  status?: string;
+  nextAction?: string;
+};
+
+const uid = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+function requiresHuman(lead: Lead) {
+  return (
+    lead.safetyCritical ||
+    lead.type === "emergency" ||
+    lead.type === "commercial_quote" ||
+    lead.type === "contractor" ||
+    lead.type === "hiring"
+  );
+}
+
+function leadSummary(lead: Lead) {
+  const service = lead.details.serviceType || lead.details.fuelType || lead.details.roleInterest || lead.type.replaceAll("_", " ");
+  return {
+    id: lead.id,
+    createdAt: lead.createdAt,
+    source: lead.source,
+    type: lead.type,
+    status: lead.status,
+    name: lead.name,
+    company: lead.company,
+    phone: lead.phone,
+    email: lead.email,
+    siteAddress: lead.siteAddress,
+    zone: lead.zone,
+    service,
+    safetyCritical: lead.safetyCritical,
+    hermesRecommendation: lead.hermesRecommendation,
+    details: lead.details,
+    chatTranscript: lead.chatTranscript
+  };
+}
+
+function fallbackReply(lead: Lead) {
+  const urgent = requiresHuman(lead);
+  const subject = urgent
+    ? "We received your Conquistador Oil request"
+    : "Thanks for contacting Conquistador Oil";
+  const body = urgent
+    ? [
+        `Hi ${lead.name},`,
+        "",
+        "Thank you for contacting Conquistador Oil. We received your request and flagged it for human review.",
+        "",
+        `If this is urgent, involves no heat, or needs immediate attention, please call ${brandConfig.phone} now so a person can review the situation as quickly as possible.`,
+        "",
+        "We will use the details you submitted to follow up.",
+        "",
+        "Conquistador Oil",
+        brandConfig.phone,
+        brandConfig.email
+      ].join("\n")
+    : [
+        `Hi ${lead.name},`,
+        "",
+        "Thank you for contacting Conquistador Oil. We received your request and the Conquistador Revenue Desk is reviewing the details.",
+        "",
+        "We will follow up using the contact information you provided. If anything is urgent, please call us directly.",
+        "",
+        "Conquistador Oil",
+        brandConfig.phone,
+        brandConfig.email
+      ].join("\n");
+  return { subject, body };
+}
+
+async function callRevenueDeskWebhook(lead: Lead): Promise<RevenueDeskWebhookReply | null> {
+  const url = process.env.HERMES_REVENUE_DESK_WEBHOOK_URL;
+  if (!url) return null;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12_000);
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(process.env.HERMES_REVENUE_DESK_SECRET
+          ? { Authorization: `Bearer ${process.env.HERMES_REVENUE_DESK_SECRET}` }
+          : {})
+      },
+      body: JSON.stringify({
+        targetAgent: "Conquistador Revenue Desk",
+        mode: "website_inquiry",
+        autoReplyAllowed: true,
+        humanRequired: requiresHuman(lead),
+        business: {
+          name: brandConfig.name,
+          phone: brandConfig.phone,
+          email: brandConfig.email,
+          address: `${brandConfig.streetAddress}, ${brandConfig.city}, ${brandConfig.state} ${brandConfig.postalCode}`,
+          services: coreServices,
+          serviceAreas
+        },
+        guardrails: [
+          "Do not promise pricing.",
+          "Do not guarantee dispatch or response time.",
+          "Do not claim licensing or availability beyond approved business data.",
+          "Emergency, no-heat, safety, pricing, hiring decisions, and contractor approvals require human attention.",
+          `For urgent issues, tell the customer to call ${brandConfig.phone}.`
+        ],
+        lead: leadSummary(lead)
+      }),
+      signal: controller.signal
+    });
+
+    if (!response.ok) throw new Error(`Revenue Desk webhook returned HTTP ${response.status}`);
+    return (await response.json().catch(() => ({}))) as RevenueDeskWebhookReply;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+export async function routeLeadToRevenueDesk(lead: Lead) {
+  const at = new Date().toISOString();
+  const activities: HermesActivity[] = [];
+  const events: InteractionEvent[] = [];
+  let deliveryStatus: Lead["hermesDeliveryStatus"] = requiresHuman(lead) ? "needs_human" : "sent";
+  let reply = fallbackReply(lead);
+  let webhookNote = "Revenue Desk webhook is not configured; used conservative local reply template.";
+
+  try {
+    const webhookReply = await callRevenueDeskWebhook(lead);
+    if (webhookReply) {
+      webhookNote = webhookReply.nextAction || "Revenue Desk webhook accepted the lead.";
+      reply = {
+        subject: webhookReply.replySubject || webhookReply.subject || reply.subject,
+        body: webhookReply.replyBody || webhookReply.body || reply.body
+      };
+    } else {
+      deliveryStatus = "failed";
+    }
+  } catch (err) {
+    deliveryStatus = "failed";
+    webhookNote = err instanceof Error ? err.message : String(err);
+  }
+
+  const mail = await sendLeadReplyEmail({ lead, subject: reply.subject, body: reply.body });
+  const emailStatus: Lead["outboundEmailStatus"] =
+    mail.status === "sent" ? "sent" : mail.status === "skipped" ? "skipped" : "failed";
+  const finalDeliveryStatus: Lead["hermesDeliveryStatus"] =
+    requiresHuman(lead) ? "needs_human" : deliveryStatus === "sent" && mail.status === "sent" ? "replied" : deliveryStatus;
+
+  activities.push({
+    id: uid("act"),
+    createdAt: at,
+    module: "Conquistador Revenue Desk",
+    action: `Processed ${lead.source} inquiry`,
+    result: `${webhookNote} Email status: ${mail.status}${mail.status === "failed" ? ` (${mail.error})` : ""}.`,
+    relatedRecordId: lead.id
+  });
+
+  events.push({
+    id: uid("evt"),
+    createdAt: at,
+    kind: "revenue_desk_delivery",
+    source: "Conquistador Revenue Desk",
+    label: `Revenue Desk delivery ${finalDeliveryStatus}`,
+    leadType: lead.type,
+    relatedRecordId: lead.id,
+    metadata: {
+      deliveryStatus: finalDeliveryStatus || "failed",
+      webhookNote
+    }
+  });
+
+  if (mail.status === "sent") {
+    events.push({
+      id: uid("evt"),
+      createdAt: at,
+      kind: "email_reply_sent",
+      source: "Zoho",
+      label: reply.subject,
+      leadType: lead.type,
+      relatedRecordId: lead.id,
+      metadata: { messageId: mail.messageId || "" }
+    });
+  }
+
+  await updateLeadRevenueDeskState(
+    lead.id,
+    {
+      status: requiresHuman(lead) ? "needs_human" : lead.status,
+      hermesDeliveryStatus: finalDeliveryStatus,
+      hermesReplyText: reply.body,
+      outboundEmailStatus: emailStatus,
+      lastFollowUpAt: at
+    },
+    activities,
+    events
+  );
+}

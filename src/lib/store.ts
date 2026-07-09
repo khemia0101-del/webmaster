@@ -7,10 +7,12 @@ import { buildLeadArtifacts, classifyLead, isSafetyCritical, recommendationFor }
 import {
   applyDecision as sbApplyDecision,
   findApproval as sbFindApproval,
+  insertActivity as sbInsertActivity,
   insertEvent as sbInsertEvent,
   insertLead as sbInsertLead,
   readStore as sbReadStore,
-  supabaseConfigured
+  supabaseConfigured,
+  updateLead as sbUpdateLead
 } from "@/lib/supabase";
 import type { ApprovalRequest, HermesActivity, InteractionEvent, Lead, LeadType, Store } from "@/lib/types";
 
@@ -74,6 +76,9 @@ export async function createLead(form: FormData, fallbackType: LeadType) {
     source: entries.source || "Website",
     type,
     status: safetyCritical ? "human_escalation" : type === "contractor" ? "vetting" : "new",
+    hermesDeliveryStatus: "pending",
+    outboundEmailStatus: entries.email ? "pending" : "not_applicable",
+    chatTranscript: entries.chatTranscript,
     name: entries.name || entries.company || "Unnamed lead",
     company: entries.company,
     phone: entries.phone || "",
@@ -145,6 +150,31 @@ export async function createLead(form: FormData, fallbackType: LeadType) {
   await writeLocalStore(store);
 
   return lead;
+}
+
+export async function updateLeadRevenueDeskState(
+  id: string,
+  patch: Pick<Partial<Lead>, "status" | "hermesDeliveryStatus" | "hermesReplyText" | "outboundEmailStatus" | "lastFollowUpAt">,
+  activity: HermesActivity[] = [],
+  events: InteractionEvent[] = []
+) {
+  if (supabaseConfigured()) {
+    await sbUpdateLead(id, patch);
+    for (const item of activity) {
+      await sbInsertActivity(item);
+    }
+    for (const item of events) {
+      await sbInsertEvent(item);
+    }
+    return;
+  }
+
+  const store = await readLocalStore();
+  const lead = store.leads.find((item) => item.id === id);
+  if (lead) Object.assign(lead, patch);
+  store.hermesActivity.unshift(...activity);
+  store.events.unshift(...events);
+  await writeLocalStore(store);
 }
 
 /**
@@ -219,11 +249,13 @@ export async function exportStoreJson() {
 export async function exportLeadsCsv() {
   const store = await getStore();
   const rows = [
-    ["createdAt", "type", "status", "name", "company", "phone", "email", "siteAddress", "zone", "safetyCritical"],
+    ["createdAt", "type", "status", "hermesDeliveryStatus", "outboundEmailStatus", "name", "company", "phone", "email", "siteAddress", "zone", "safetyCritical"],
     ...store.leads.map((lead) => [
       lead.createdAt,
       lead.type,
       lead.status,
+      lead.hermesDeliveryStatus ?? "",
+      lead.outboundEmailStatus ?? "",
       lead.name,
       lead.company ?? "",
       lead.phone,

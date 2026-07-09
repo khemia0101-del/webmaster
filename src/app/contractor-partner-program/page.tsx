@@ -1,10 +1,20 @@
+import type { Metadata } from "next";
 import { IntakeForm } from "@/components/intake-form";
 import { FeatureGrid, PageHero, Split } from "@/components/page-shell";
+import { JsonLd } from "@/components/structured-data";
 import { Section } from "@/components/ui";
+import { pageMetadata, serviceSchema } from "@/lib/seo";
+
+export const metadata: Metadata = pageMetadata({
+  title: "Contractor Partner Application Lancaster PA",
+  description: "Independent fuel, HVAC, heating, tank, generator, and commercial service companies can apply for future partner review with Conquistador Oil.",
+  path: "/contractor-partner-program"
+});
 
 export default function ContractorPartnerPage() {
   return (
     <>
+      <JsonLd data={serviceSchema("Contractor partner application", "Application review for independent fuel, HVAC, heating, tank, generator, and commercial service companies interested in future routed work.", "/contractor-partner-program")} />
       <PageHero
         body="For independent fuel, HVAC, heating, tank, generator, and commercial service companies interested in future routed work."
         eyebrow="Contractor application"
@@ -16,7 +26,7 @@ export default function ContractorPartnerPage() {
         <Split>
           <div>
             <h2 className="text-3xl font-bold">Apply for future partner work.</h2>
-            <p className="mt-4 leading-7 text-[#68706c]">
+            <p className="mt-4 leading-7 text-[#5c6570]">
               Tell us about your company, service area, trades, equipment, and documentation so we can review fit for future work.
             </p>
             <div className="mt-6">

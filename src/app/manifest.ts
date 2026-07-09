@@ -4,10 +4,17 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Conquistador Oil",
     short_name: "Conquistador",
-    description: "Fuel delivery, heating, and HVAC service requests for Lancaster and Central Pennsylvania.",
+    description: "Heating oil delivery, commercial fuel delivery, HVAC service requests, and emergency heating help for Lancaster and Central Pennsylvania.",
     start_url: "/",
     display: "standalone",
-    background_color: "#f7f4ee",
-    theme_color: "#0f4c45"
+    background_color: "#f4eadb",
+    theme_color: "#0b2f4a",
+    icons: [
+      {
+        src: "/brand/conquistador-oil-logo.png",
+        sizes: "1024x1024",
+        type: "image/png"
+      }
+    ]
   };
 }

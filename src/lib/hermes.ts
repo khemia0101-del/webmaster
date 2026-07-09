@@ -12,6 +12,7 @@ import type {
 const id = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
 export function classifyLead(input: Record<string, string>, fallback: LeadType): LeadType {
+  if (fallback === "hiring") return "hiring";
   const text = Object.values(input).join(" ").toLowerCase();
   if (text.includes("no heat") || text.includes("emergency") || text.includes("urgent")) return "emergency";
   if (text.includes("contractor") || text.includes("insurance") || text.includes("truck")) return "contractor";
@@ -194,5 +195,6 @@ export function recommendationFor(type: LeadType, safetyCritical: boolean) {
   if (type === "contractor") return "Start Stage 1 vetting and request required documents before any approval.";
   if (type === "commercial_quote") return "Prepare draft quote inputs and route pricing/terms to human approval.";
   if (type === "property_manager") return "Schedule vendor-desk audit and map sites, vendors, billing, and service pain points.";
+  if (type === "hiring") return "Review applicant licensing, experience, availability, and service-area fit, then contact for screening.";
   return "Schedule commercial audit and prepare structured follow-up.";
 }

@@ -41,14 +41,14 @@ export function ApprovalActions({ id }: { id: string }) {
   return (
     <div className="mt-3 grid gap-2">
       <input
-        className="min-h-9 rounded-md border border-[#d8d1c3] bg-white px-3 py-1.5 text-sm outline-none ring-[#0f4c45]/20 focus:ring-2"
+        className="min-h-9 rounded-md border border-[#d8c2a6] bg-white px-3 py-1.5 text-sm outline-none ring-[#0b2f4a]/20 focus:ring-2"
         onChange={(e) => setNote(e.target.value)}
         placeholder="Decision note (optional)"
         value={note}
       />
       <div className="flex gap-2">
         <button
-          className="inline-flex min-h-9 items-center gap-1 rounded-md bg-[#0f4c45] px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-[#0b3934] disabled:opacity-60"
+          className="inline-flex min-h-9 items-center gap-1 rounded-md bg-[#0b2f4a] px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-[#08263d] disabled:opacity-60"
           disabled={busy}
           onClick={() => decide("approved")}
           type="button"

@@ -9,6 +9,11 @@ export default function robots(): MetadataRoute.Robots {
         userAgent: "*",
         allow: "/",
         disallow: ["/admin", "/api"]
+      },
+      {
+        userAgent: ["Googlebot", "Bingbot", "OAI-SearchBot", "GPTBot", "ChatGPT-User", "PerplexityBot", "Google-Extended"],
+        allow: "/",
+        disallow: ["/admin", "/api"]
       }
     ],
     sitemap: `${siteUrl}/sitemap.xml`

@@ -1,10 +1,20 @@
+import type { Metadata } from "next";
 import { IntakeForm } from "@/components/intake-form";
 import { PageHero, Split } from "@/components/page-shell";
+import { JsonLd } from "@/components/structured-data";
 import { Section } from "@/components/ui";
+import { pageMetadata, serviceSchema } from "@/lib/seo";
+
+export const metadata: Metadata = pageMetadata({
+  title: "Commercial Fuel and HVAC Account Review Lancaster PA",
+  description: "Request a commercial account review for fuel delivery, heating oil, HVAC service, multi-site properties, farms, warehouses, offices, and facilities.",
+  path: "/commercial-audit"
+});
 
 export default function CommercialAuditPage() {
   return (
     <>
+      <JsonLd data={serviceSchema("Commercial fuel and HVAC account review", "Commercial account review for recurring fuel delivery, heating oil, HVAC service, multi-site properties, farms, warehouses, offices, and facilities.", "/commercial-audit")} />
       <PageHero
         body="A simple review for businesses with recurring fuel, heating, HVAC, or multi-site service needs."
         eyebrow="Commercial account review"
@@ -16,10 +26,10 @@ export default function CommercialAuditPage() {
         <Split>
           <div>
             <h2 className="text-3xl font-bold">Tell us about your buildings, fuel use, and service needs.</h2>
-            <p className="mt-4 leading-7 text-[#68706c]">
+            <p className="mt-4 leading-7 text-[#5c6570]">
               This is for property managers, facilities teams, farms, offices, warehouses, and commercial operators who want help with recurring fuel, HVAC, or heating service requests.
             </p>
-            <ul className="mt-6 grid gap-3 text-sm text-[#394340]">
+            <ul className="mt-6 grid gap-3 text-sm text-[#263544]">
               <li>Fuel type, estimated usage, site count, and delivery needs.</li>
               <li>Heating, HVAC, oil burner, boiler, furnace, and emergency service concerns.</li>
               <li>Preferred follow-up timing and the best contact for the account.</li>

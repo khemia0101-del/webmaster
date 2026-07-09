@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
+import { routeLeadToRevenueDesk } from "@/lib/revenue-desk";
 import { createLead, recordEvent } from "@/lib/store";
 import type { LeadType } from "@/lib/types";
 
-const allowed: LeadType[] = ["emergency", "commercial_audit", "contractor", "commercial_quote", "fuel", "property_manager", "other"];
+const allowed: LeadType[] = ["emergency", "commercial_audit", "contractor", "commercial_quote", "fuel", "property_manager", "hiring", "other"];
 
 export async function POST(request: Request) {
   let fallbackType: LeadType = "other";
@@ -18,6 +19,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unknown intake type." }, { status: 400 });
     }
     const lead = await createLead(form, fallbackType);
+    await routeLeadToRevenueDesk(lead).catch((err) =>
+      recordEvent({
+        kind: "system_error",
+        source: "Conquistador Revenue Desk",
+        label: `Revenue Desk routing failed for ${lead.id}`,
+        relatedRecordId: lead.id,
+        metadata: { message: err instanceof Error ? err.message : String(err) }
+      }).catch(() => undefined)
+    );
     return NextResponse.json({
       id: lead.id,
       message: lead.safetyCritical

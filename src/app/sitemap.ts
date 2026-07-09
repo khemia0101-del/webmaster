@@ -11,7 +11,13 @@ const routes = [
   "/farm-fuel-heating",
   "/off-road-diesel",
   "/job-site-fuel",
-  "/service-areas"
+  "/service-areas",
+  "/careers",
+  "/heating-oil-delivery-lancaster-pa",
+  "/furnace-repair-lancaster-pa",
+  "/boiler-repair-lancaster-pa",
+  "/emergency-heating-service-lancaster-pa",
+  "/commercial-diesel-delivery-lancaster-pa"
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {

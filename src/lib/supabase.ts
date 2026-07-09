@@ -104,6 +104,14 @@ export async function insertEvent(event: InteractionEvent): Promise<void> {
   await supabase().from(TABLES.events).insert(event);
 }
 
+export async function insertActivity(activity: HermesActivity): Promise<void> {
+  await supabase().from(TABLES.hermesActivity).insert(activity);
+}
+
+export async function updateLead(id: string, patch: Partial<Lead>): Promise<void> {
+  await supabase().from(TABLES.leads).update(patch).eq("id", id);
+}
+
 export async function applyDecision(
   approval: ApprovalRequest,
   activity: HermesActivity,

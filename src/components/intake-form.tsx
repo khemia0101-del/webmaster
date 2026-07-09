@@ -17,11 +17,13 @@ type FieldConfig = {
 export function IntakeForm({
   type,
   fields,
-  submitLabel = "Submit request"
+  submitLabel = "Submit request",
+  source = "Website"
 }: {
   type: LeadType;
   fields: FieldConfig[];
   submitLabel?: string;
+  source?: string;
 }) {
   const [status, setStatus] = useState<"idle" | "submitting" | "done" | "error">("idle");
   const [message, setMessage] = useState("");
@@ -53,8 +55,8 @@ export function IntakeForm({
   }
 
   return (
-    <form className="grid gap-4 rounded-lg border border-[#d8d1c3] bg-[#fffdf8] p-5 shadow-sm" onSubmit={onSubmit}>
-      <input name="source" type="hidden" value="Website" />
+    <form className="grid gap-4 rounded-lg border border-[#d8c2a6] bg-[#fff9ee] p-5 shadow-sm" onSubmit={onSubmit}>
+      <input name="source" type="hidden" value={source} />
       <div className="grid gap-4 md:grid-cols-2">
         {fields.map((field) =>
           field.area ? (
@@ -67,7 +69,7 @@ export function IntakeForm({
         )}
       </div>
       <button
-        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-[#0f4c45] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#0b3934] disabled:opacity-60"
+        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-[#0b2f4a] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#08263d] disabled:opacity-60"
         disabled={status === "submitting"}
         type="submit"
       >
@@ -75,7 +77,7 @@ export function IntakeForm({
         {status === "done" ? <CheckCircle2 size={18} /> : <ArrowRight size={18} />}
       </button>
       {message ? (
-        <p className={status === "error" ? "text-sm font-semibold text-[#8d2f20]" : "text-sm font-semibold text-[#0f4c45]"}>
+        <p className={status === "error" ? "text-sm font-semibold text-[#8d2f20]" : "text-sm font-semibold text-[#0b2f4a]"}>
           {message}
         </p>
       ) : null}

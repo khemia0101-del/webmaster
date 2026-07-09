@@ -32,6 +32,24 @@ export function getEnvChecks(): EnvCheck[] {
       label: "Public site URL",
       present: Boolean(process.env.NEXT_PUBLIC_SITE_URL),
       requiredForProduction: true
+    },
+    {
+      key: "HERMES_REVENUE_DESK_WEBHOOK_URL",
+      label: "Conquistador Revenue Desk webhook",
+      present: Boolean(process.env.HERMES_REVENUE_DESK_WEBHOOK_URL),
+      requiredForProduction: false
+    },
+    {
+      key: "ZOHO_SMTP_USER",
+      label: "Zoho email account",
+      present: Boolean(process.env.ZOHO_SMTP_USER),
+      requiredForProduction: false
+    },
+    {
+      key: "ZOHO_SMTP_PASS",
+      label: "Zoho email app password",
+      present: Boolean(process.env.ZOHO_SMTP_PASS),
+      requiredForProduction: false
     }
   ];
 }

@@ -36,3 +36,4 @@ conquistador-oil-agent/data/
 *.db
 *.sqlite
 *.sqlite3
+.vercel

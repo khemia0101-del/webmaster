@@ -5,6 +5,7 @@ export type LeadType =
   | "commercial_quote"
   | "fuel"
   | "property_manager"
+  | "hiring"
   | "other";
 
 export type ZoneStatus = "Red" | "Yellow" | "Green" | "Gold";
@@ -22,6 +23,11 @@ export type Lead = {
   source: string;
   type: LeadType;
   status: string;
+  hermesDeliveryStatus?: "pending" | "sent" | "replied" | "failed" | "needs_human";
+  hermesReplyText?: string;
+  outboundEmailStatus?: "not_applicable" | "pending" | "sent" | "failed" | "skipped";
+  chatTranscript?: string;
+  lastFollowUpAt?: string;
   name: string;
   company?: string;
   phone: string;
@@ -133,6 +139,9 @@ export type InteractionEventKind =
   | "form_submitted"
   | "form_error"
   | "lead_classified"
+  | "revenue_desk_delivery"
+  | "revenue_desk_reply"
+  | "email_reply_sent"
   | "approval_decided"
   | "contractor_interaction"
   | "system_error"
