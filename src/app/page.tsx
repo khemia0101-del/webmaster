@@ -66,10 +66,10 @@ export default async function Home() {
       <PageHero
         body="Request heating oil delivery, commercial fuel delivery, HVAC service, furnace or boiler help, and emergency no-heat intake from a Lancaster-based team."
         eyebrow="Lancaster PA heating oil and HVAC"
-        primaryHref={variant.primaryHref}
-        primaryLabel={variant.primaryLabel || brandConfig.primaryCta}
-        secondaryHref={variant.secondaryHref}
-        secondaryLabel={variant.secondaryLabel}
+        primaryHref={`tel:${brandConfig.phoneHref}`}
+        primaryLabel={`Call Now ${brandConfig.phone}`}
+        secondaryHref="/emergency-service"
+        secondaryLabel="Request Service"
         title="Heating Oil Delivery and HVAC Service in Lancaster, PA"
       >
         <div className="mt-6 grid gap-3 text-sm font-semibold text-white/90 sm:grid-cols-3">

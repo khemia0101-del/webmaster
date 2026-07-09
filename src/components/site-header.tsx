@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { PhoneCall } from "lucide-react";
 import { brandConfig } from "@/lib/config";
 import { ButtonLink } from "@/components/ui";
 
@@ -35,7 +36,16 @@ export function SiteHeader() {
             </Link>
           ))}
         </nav>
-        <ButtonLink href="/emergency-service">Request Service</ButtonLink>
+        <div className="flex shrink-0 items-center gap-2">
+          <a
+            className="hidden min-h-11 items-center justify-center gap-2 rounded-md bg-[#d6a354] px-4 py-3 text-sm font-bold text-[#101827] shadow-sm transition hover:bg-[#bd8736] lg:inline-flex"
+            href={`tel:${brandConfig.phoneHref}`}
+          >
+            <PhoneCall size={17} />
+            Call {brandConfig.phone}
+          </a>
+          <ButtonLink href="/emergency-service">Request Service</ButtonLink>
+        </div>
       </div>
     </header>
   );
