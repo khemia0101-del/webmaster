@@ -7,8 +7,8 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   const store = await getStore();
-  const report = buildCelinaLoopReport(store);
   const learning = computeLearning(store);
+  const report = buildCelinaLoopReport(store, learning);
 
   return NextResponse.json({
     ok: true,

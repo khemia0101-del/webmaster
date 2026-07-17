@@ -47,6 +47,7 @@ export type LearningReport = {
   breakages: BreakageInsight[];
   learningRecords: LearningRecord[];
   actionQueue: CelinaAction[];
+  actionCounts: Record<CelinaActionStatus, number>;
   biggestBottleneck: string;
   rampCandidates: string[];
   recommendations: string[];
@@ -82,6 +83,7 @@ function buildLearning(input: {
   recommendedAction: string;
   actionType: CelinaActionType;
   sourceEventIds: string[];
+  createdAt: string;
   blocked?: boolean;
 }): { learning: LearningRecord; action: CelinaAction } {
   const riskLevel = riskForAction(input.actionType);
@@ -90,11 +92,10 @@ function buildLearning(input: {
   const autoImplementable = actionStatus === "auto_now";
   const id = uid("learn", input.pattern);
   const actionId = uid("actq", input.recommendedAction);
-  const createdAt = new Date().toISOString();
 
   const learning: LearningRecord = {
     id,
-    createdAt,
+    createdAt: input.createdAt,
     pattern: input.pattern,
     evidenceCount: input.evidenceCount,
     estimatedRevenueImpact: input.estimatedRevenueImpact,
@@ -110,7 +111,7 @@ function buildLearning(input: {
 
   const action: CelinaAction = {
     id: actionId,
-    createdAt,
+    createdAt: input.createdAt,
     status: actionStatus,
     type: input.actionType,
     title: input.recommendedAction,
@@ -125,9 +126,31 @@ function buildLearning(input: {
   return { learning, action };
 }
 
+function scoreAction(action: CelinaAction) {
+  const statusWeight: Record<CelinaActionStatus, number> = {
+    auto_now: 1.25,
+    approval_required: 1.1,
+    observe_more: 0.65,
+    blocked: 0.2,
+    implemented: 0.1
+  };
+  return action.expectedRevenueImpact * action.confidence * statusWeight[action.status];
+}
+
+function countActions(actions: CelinaAction[]): Record<CelinaActionStatus, number> {
+  return actions.reduce<Record<CelinaActionStatus, number>>(
+    (counts, action) => {
+      counts[action.status] += 1;
+      return counts;
+    },
+    { auto_now: 0, approval_required: 0, observe_more: 0, blocked: 0, implemented: 0 }
+  );
+}
+
 export function computeLearning(store: Store): LearningReport {
   const events = store.events ?? [];
   const latestKpi = store.kpiSnapshots[0];
+  const generatedAt = events[0]?.createdAt ?? latestKpi?.createdAt ?? new Date().toISOString();
   const bookedGrossRevenue =
     latestKpi?.bookedGrossRevenue ??
     store.jobs
@@ -216,7 +239,8 @@ export function computeLearning(store: Store): LearningReport {
         confidence: clamp(0.58 + unrespondedLeads.length * 0.08),
         recommendedAction: "Draft and queue follow-up for every lead without confirmed reply.",
         actionType: "follow_up",
-        sourceEventIds: unrespondedLeads.map((lead) => lead.id)
+        sourceEventIds: unrespondedLeads.map((lead) => lead.id),
+        createdAt: generatedAt
       })
     );
   }
@@ -233,7 +257,8 @@ export function computeLearning(store: Store): LearningReport {
         confidence: clamp(0.62 + commercialLeads.length * 0.04),
         recommendedAction: "Create the next commercial account follow-up package and a low-risk page/content experiment.",
         actionType: "experiment",
-        sourceEventIds: commercialLeads.map((lead) => lead.id)
+        sourceEventIds: commercialLeads.map((lead) => lead.id),
+        createdAt: generatedAt
       })
     );
   }
@@ -248,7 +273,8 @@ export function computeLearning(store: Store): LearningReport {
         confidence: 0.78,
         recommendedAction: "Source and vet backup vendors for red zones before promising dispatch.",
         actionType: "vendor_capacity",
-        sourceEventIds: redZones.map((zone) => zone.id)
+        sourceEventIds: redZones.map((zone) => zone.id),
+        createdAt: generatedAt
       })
     );
   }
@@ -287,6 +313,11 @@ export function computeLearning(store: Store): LearningReport {
           ? "Revenue volume is the biggest constraint: booked gross revenue is still far below the monthly target."
           : "The loop has no single obvious bottleneck yet; keep collecting outcome data.";
 
+  const sortedLearnings = learningRecords.sort(
+    (a, b) => b.estimatedRevenueImpact * b.confidence - a.estimatedRevenueImpact * a.confidence
+  );
+  const sortedActions = actionQueue.sort((a, b) => scoreAction(b) - scoreAction(a));
+
   return {
     totalInteractions: events.length,
     totalErrors,
@@ -297,8 +328,9 @@ export function computeLearning(store: Store): LearningReport {
     followUpSuccessRate,
     rules,
     breakages,
-    learningRecords: learningRecords.sort((a, b) => b.estimatedRevenueImpact - a.estimatedRevenueImpact),
-    actionQueue: actionQueue.sort((a, b) => b.expectedRevenueImpact - a.expectedRevenueImpact),
+    learningRecords: sortedLearnings,
+    actionQueue: sortedActions,
+    actionCounts: countActions(sortedActions),
     biggestBottleneck,
     rampCandidates,
     recommendations

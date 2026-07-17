@@ -1,17 +1,12 @@
 import "server-only";
 
-import { computeLearning } from "@/lib/learning";
-import type { CelinaActionStatus, Store } from "@/lib/types";
+import { computeLearning, type LearningReport } from "@/lib/learning";
+import type { Store } from "@/lib/types";
 
 const money = (value: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
 
-function actionCount(store: Store, status: CelinaActionStatus) {
-  return computeLearning(store).actionQueue.filter((action) => action.status === status).length;
-}
-
-export function buildCelinaLoopReport(store: Store) {
-  const learning = computeLearning(store);
+export function buildCelinaLoopReport(store: Store, learning: LearningReport = computeLearning(store)) {
   const urgentLeads = store.leads.filter((lead) => lead.safetyCritical || lead.status === "human_escalation");
   const missedFollowUps = store.leads.filter((lead) =>
     !lead.safetyCritical &&
@@ -44,10 +39,11 @@ export function buildCelinaLoopReport(store: Store) {
       newestLearnings
     },
     actions: {
-      autoNow: actionCount(store, "auto_now"),
-      approvalRequired: actionCount(store, "approval_required"),
-      observeMore: actionCount(store, "observe_more"),
-      blocked: actionCount(store, "blocked"),
+      autoNow: learning.actionCounts.auto_now,
+      approvalRequired: learning.actionCounts.approval_required,
+      observeMore: learning.actionCounts.observe_more,
+      blocked: learning.actionCounts.blocked,
+      implemented: learning.actionCounts.implemented,
       topActions
     }
   };
@@ -55,8 +51,8 @@ export function buildCelinaLoopReport(store: Store) {
 
 export function renderCelinaCommand(command: string, store: Store) {
   const normalized = command.trim().toLowerCase().split(/\s+/)[0] || "/today";
-  const report = buildCelinaLoopReport(store);
   const learning = computeLearning(store);
+  const report = buildCelinaLoopReport(store, learning);
 
   if (normalized === "/status") {
     return [
@@ -80,7 +76,7 @@ export function renderCelinaCommand(command: string, store: Store) {
   }
 
   if (normalized === "/learned") {
-    return learning.learningRecords
+    return report.learning.newestLearnings
       .slice(0, 5)
       .map(
         (item, index) =>
@@ -90,7 +86,7 @@ export function renderCelinaCommand(command: string, store: Store) {
   }
 
   if (normalized === "/actions") {
-    return learning.actionQueue
+    return report.actions.topActions
       .slice(0, 5)
       .map(
         (action, index) =>
