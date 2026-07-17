@@ -142,6 +142,14 @@ export type InteractionEventKind =
   | "revenue_desk_delivery"
   | "revenue_desk_reply"
   | "email_reply_sent"
+  | "telegram_command"
+  | "call_completed"
+  | "quote_sent"
+  | "job_booked"
+  | "job_lost"
+  | "follow_up_sent"
+  | "follow_up_failed"
+  | "contractor_contacted"
   | "approval_decided"
   | "contractor_interaction"
   | "system_error"
@@ -152,16 +160,78 @@ export type InteractionEvent = {
   id: string;
   createdAt: string;
   kind: InteractionEventKind;
+  eventType?: string;
   source: string; // e.g. "Website", "Admin", "Hermes", "API"
+  actor?: string;
   label: string;
   leadType?: LeadType;
   relatedRecordId?: string;
+  leadId?: string;
+  customerId?: string;
+  jobId?: string;
+  contractorId?: string;
+  experimentId?: string;
   // Learning signal: what Hermes recommended vs. what the human decided.
   triggeringRule?: string;
   hermesRecommended?: string;
+  recommendation?: string;
   humanDecision?: string;
+  outcome?: string;
+  revenueImpact?: number;
+  confidence?: number;
+  riskLevel?: "low" | "medium" | "high" | "critical";
   agreed?: boolean;
   metadata?: Record<string, string>;
+};
+
+export type CelinaActionStatus = "auto_now" | "approval_required" | "observe_more" | "blocked" | "implemented";
+
+export type CelinaActionType =
+  | "follow_up"
+  | "seo_content"
+  | "crm_update"
+  | "experiment"
+  | "vendor_capacity"
+  | "pricing"
+  | "dispatch"
+  | "deploy"
+  | "paid_spend"
+  | "public_claim"
+  | "hiring"
+  | "legal_terms"
+  | "report";
+
+export type LearningRecord = {
+  id: string;
+  createdAt: string;
+  pattern: string;
+  evidenceCount: number;
+  estimatedRevenueImpact: number;
+  confidence: number;
+  recommendedAction: string;
+  autoImplementable: boolean;
+  needsHumanApproval: boolean;
+  implemented: boolean;
+  result?: string;
+  actionStatus: CelinaActionStatus;
+  riskLevel: "low" | "medium" | "high" | "critical";
+  sourceEventIds: string[];
+};
+
+export type CelinaAction = {
+  id: string;
+  createdAt: string;
+  status: CelinaActionStatus;
+  type: CelinaActionType;
+  title: string;
+  summary: string;
+  expectedRevenueImpact: number;
+  confidence: number;
+  riskLevel: "low" | "medium" | "high" | "critical";
+  approvalReason?: string;
+  learningRecordId?: string;
+  implementedAt?: string;
+  result?: string;
 };
 
 export type ExperimentVariant = {
@@ -189,6 +259,8 @@ export type WebsiteExperiment = {
 export type KpiSnapshot = {
   id: string;
   createdAt: string;
+  bookedGrossRevenue?: number;
+  monthlyRevenueTarget?: number;
   newLeads: number;
   emergencyJobsRouted: number;
   averageSpread: number;
@@ -209,4 +281,6 @@ export type Store = {
   hermesActivity: HermesActivity[];
   kpiSnapshots: KpiSnapshot[];
   events: InteractionEvent[];
+  learningRecords: LearningRecord[];
+  celinaActions: CelinaAction[];
 };

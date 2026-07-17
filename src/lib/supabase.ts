@@ -29,7 +29,9 @@ const TABLES = {
   approvalRequests: "approval_requests",
   hermesActivity: "hermes_activity",
   kpiSnapshots: "kpi_snapshots",
-  events: "events"
+  events: "events",
+  learningRecords: "learning_records",
+  celinaActions: "celina_actions"
 } as const;
 
 let cached: SupabaseClient | null = null;
@@ -59,7 +61,9 @@ export async function readStore(): Promise<Store> {
     approvalRequests,
     hermesActivity,
     kpiSnapshots,
-    events
+    events,
+    learningRecords,
+    celinaActions
   ] = await Promise.all([
     db.from(TABLES.leads).select("*").order("createdAt", { ascending: false }),
     db.from(TABLES.customers).select("*"),
@@ -70,7 +74,9 @@ export async function readStore(): Promise<Store> {
     db.from(TABLES.approvalRequests).select("*").order("createdAt", { ascending: false }),
     db.from(TABLES.hermesActivity).select("*").order("createdAt", { ascending: false }),
     db.from(TABLES.kpiSnapshots).select("*").order("createdAt", { ascending: false }),
-    db.from(TABLES.events).select("*").order("createdAt", { ascending: false })
+    db.from(TABLES.events).select("*").order("createdAt", { ascending: false }),
+    db.from(TABLES.learningRecords).select("*").order("estimatedRevenueImpact", { ascending: false }),
+    db.from(TABLES.celinaActions).select("*").order("expectedRevenueImpact", { ascending: false })
   ]);
 
   return {
@@ -83,7 +89,9 @@ export async function readStore(): Promise<Store> {
     approvalRequests: (approvalRequests.data ?? []) as Store["approvalRequests"],
     hermesActivity: (hermesActivity.data ?? []) as Store["hermesActivity"],
     kpiSnapshots: (kpiSnapshots.data ?? []) as Store["kpiSnapshots"],
-    events: (events.data ?? []) as Store["events"]
+    events: (events.data ?? []) as Store["events"],
+    learningRecords: (learningRecords.data ?? []) as Store["learningRecords"],
+    celinaActions: (celinaActions.data ?? []) as Store["celinaActions"]
   };
 }
 
@@ -153,7 +161,9 @@ export async function seedDatabase(): Promise<{ seeded: boolean; counts: Record<
     [TABLES.approvalRequests, s.approvalRequests],
     [TABLES.hermesActivity, s.hermesActivity],
     [TABLES.kpiSnapshots, s.kpiSnapshots],
-    [TABLES.events, s.events]
+    [TABLES.events, s.events],
+    [TABLES.learningRecords, s.learningRecords],
+    [TABLES.celinaActions, s.celinaActions]
   ];
   const counts: Record<string, number> = {};
   for (const [table, rows] of ops) {

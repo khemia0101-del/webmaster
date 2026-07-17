@@ -91,14 +91,29 @@ const seedEvents: InteractionEvent[] = [
     source: "Website",
     label: "Commercial quote intake missing volume"
   },
-  {
-    id: "evt-err-2",
-    createdAt: "2026-05-28T09:30:00.000Z",
-    kind: "form_error",
-    source: "Website",
-    label: "Commercial quote intake missing volume"
-  }
-];
+    {
+      id: "evt-err-2",
+      createdAt: "2026-05-28T09:30:00.000Z",
+      kind: "form_error",
+      source: "Website",
+      label: "Commercial quote intake missing volume"
+    },
+    {
+      id: "evt-booked-1",
+      createdAt: "2026-05-30T16:15:00.000Z",
+      kind: "job_booked",
+      eventType: "job_booked",
+      source: "Admin",
+      actor: "Operator",
+      label: "Booked completed HVAC service job",
+      customerId: "cust-001",
+      jobId: "job-001",
+      outcome: "completed",
+      revenueImpact: 850,
+      confidence: 1,
+      riskLevel: "low"
+    }
+  ];
 
 export const seedStore: Store = {
   leads: [
@@ -289,6 +304,8 @@ export const seedStore: Store = {
     {
       id: "kpi-001",
       createdAt: "2026-05-30T17:00:00.000Z",
+      bookedGrossRevenue: 850,
+      monthlyRevenueTarget: 500000,
       newLeads: 7,
       emergencyJobsRouted: 2,
       averageSpread: 245,
@@ -298,5 +315,36 @@ export const seedStore: Store = {
       bookedAudits: 3
     }
   ],
-  events: seedEvents
+  events: seedEvents,
+  learningRecords: [
+    {
+      id: "learn-commercial-follow-up",
+      createdAt: "2026-05-30T17:05:00.000Z",
+      pattern: "Commercial property-manager leads show higher revenue potential than one-off residential requests.",
+      evidenceCount: 2,
+      estimatedRevenueImpact: 13000,
+      confidence: 0.7,
+      recommendedAction: "Prioritize commercial account follow-up and next-page experiments.",
+      autoImplementable: true,
+      needsHumanApproval: false,
+      implemented: false,
+      actionStatus: "auto_now",
+      riskLevel: "low",
+      sourceEventIds: ["lead-001", "evt-booked-1"]
+    }
+  ],
+  celinaActions: [
+    {
+      id: "actq-commercial-follow-up",
+      createdAt: "2026-05-30T17:05:00.000Z",
+      status: "auto_now",
+      type: "follow_up",
+      title: "Draft commercial account follow-up package",
+      summary: "Use commercial lead evidence to move property-manager and recurring fuel accounts faster.",
+      expectedRevenueImpact: 13000,
+      confidence: 0.7,
+      riskLevel: "low",
+      learningRecordId: "learn-commercial-follow-up"
+    }
+  ]
 };

@@ -37,6 +37,7 @@ Live site: https://webmaster-mocha.vercel.app/
 - Vercel deployment
 - Optional Supabase persistence
 - Optional Hermes Revenue Desk webhook
+- CelinaAmenBot closed-loop learning and action queue
 - Optional Zoho SMTP outbound email
 
 ## Local Development
@@ -81,6 +82,7 @@ ADMIN_PASSWORD=
 
 HERMES_REVENUE_DESK_WEBHOOK_URL=
 HERMES_REVENUE_DESK_SECRET=
+CELINA_COMMAND_SECRET=
 
 ZOHO_SMTP_HOST=smtp.zoho.com
 ZOHO_SMTP_PORT=465
@@ -99,6 +101,21 @@ ZOHO_FROM_NAME=Conquistador Oil
 5. Emergency / no-heat leads use conservative language and direct customers to call `(717) 397-9800`.
 
 Forms and chat are intentionally website-intake only. There is no public booking guarantee, pricing promise, payment flow, or automatic dispatch confirmation.
+
+## CelinaAmenBot Closed Loop
+
+Celina's operating loop is built into the website data layer:
+
+```text
+Interact -> capture signal -> score outcome -> extract learning -> choose action -> implement or request approval -> measure result -> update policy -> repeat
+```
+
+Endpoints:
+
+- `/api/celina/loop` returns the current revenue goal, bottleneck, learning records, and action queue.
+- `/api/celina/telegram` accepts a JSON `POST` with `command` for Telegram-style commands such as `/status`, `/today`, `/learned`, `/actions`, and `/goal`.
+
+Set `CELINA_COMMAND_SECRET` in production to require `Authorization: Bearer <secret>` for command calls.
 
 ## Deployment
 

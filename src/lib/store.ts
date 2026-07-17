@@ -29,6 +29,8 @@ async function readLocalStore(): Promise<Store> {
     const parsed = JSON.parse(raw) as Partial<Store>;
     // Backfill collections added after a store file was first written.
     if (!parsed.events) parsed.events = [];
+    if (!parsed.learningRecords) parsed.learningRecords = [];
+    if (!parsed.celinaActions) parsed.celinaActions = [];
     return parsed as Store;
   } catch {
     await fs.mkdir(dataDir, { recursive: true });
@@ -54,6 +56,8 @@ export async function recordEvent(
   const event: InteractionEvent = {
     id: partial.id ?? uid("evt"),
     createdAt: partial.createdAt ?? new Date().toISOString(),
+    eventType: partial.eventType ?? partial.kind,
+    actor: partial.actor ?? partial.source,
     ...partial
   };
   if (supabaseConfigured()) {
@@ -104,21 +108,35 @@ export async function createLead(form: FormData, fallbackType: LeadType) {
       id: uid("evt"),
       createdAt: lead.createdAt,
       kind: "form_submitted",
+      eventType: "form_submitted",
       source: lead.source,
+      actor: "Website visitor",
       label: `${lead.type} intake submitted`,
       leadType: lead.type,
       relatedRecordId: lead.id,
+      leadId: lead.id,
+      outcome: "lead_created",
+      revenueImpact: 0,
+      confidence: 0.8,
+      riskLevel: lead.safetyCritical ? "critical" : "low",
       metadata: { zone: lead.zone, safetyCritical: String(lead.safetyCritical) }
     },
     {
       id: uid("evt"),
       createdAt: lead.createdAt,
       kind: "lead_classified",
+      eventType: "lead_classified",
       source: "Hermes",
+      actor: "CelinaAmenBot",
       label: lead.hermesRecommendation,
       leadType: lead.type,
       relatedRecordId: lead.id,
-      hermesRecommended: lead.hermesRecommendation
+      leadId: lead.id,
+      hermesRecommended: lead.hermesRecommendation,
+      recommendation: lead.hermesRecommendation,
+      outcome: safetyCritical ? "human_escalation" : "queued_next_action",
+      confidence: safetyCritical ? 1 : 0.72,
+      riskLevel: safetyCritical ? "critical" : "medium"
     }
   ];
 
@@ -127,10 +145,18 @@ export async function createLead(form: FormData, fallbackType: LeadType) {
       id: uid("evt"),
       createdAt: lead.createdAt,
       kind: "experiment_conversion",
+      eventType: "experiment_conversion",
       source: lead.source,
+      actor: "Website visitor",
       label: `${entries.experimentId}:${entries.variantId} conversion`,
       leadType: lead.type,
       relatedRecordId: lead.id,
+      leadId: lead.id,
+      experimentId: entries.experimentId,
+      outcome: "converted_to_lead",
+      revenueImpact: 0,
+      confidence: 0.7,
+      riskLevel: "low",
       metadata: {
         experimentId: entries.experimentId,
         variantId: entries.variantId,
@@ -205,12 +231,19 @@ export async function decideApproval(
     id: uid("evt"),
     createdAt: at,
     kind: "approval_decided",
+    eventType: "approval_decided",
     source: "Admin",
+    actor: decidedBy,
     label: `${decision} ${approval.triggeringRule || approval.type}`,
     relatedRecordId: approval.relatedRecordId,
+    leadId: approval.relatedRecordId?.startsWith("lead-") ? approval.relatedRecordId : undefined,
     triggeringRule: approval.triggeringRule || approval.type,
     hermesRecommended: approval.title,
+    recommendation: approval.summary,
     humanDecision: decision,
+    outcome: decision,
+    confidence: approval.riskScore ? Math.min(1, approval.riskScore / 100) : 0.8,
+    riskLevel: approval.riskLevel,
     agreed: decision === "approved"
   });
 

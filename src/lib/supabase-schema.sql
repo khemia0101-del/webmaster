@@ -114,6 +114,8 @@ create table if not exists hermes_activity (
 create table if not exists kpi_snapshots (
   id text primary key,
   "createdAt" timestamptz not null,
+  "bookedGrossRevenue" numeric,
+  "monthlyRevenueTarget" numeric,
   "newLeads" numeric not null,
   "emergencyJobsRouted" numeric not null,
   "averageSpread" numeric not null,
@@ -130,13 +132,58 @@ create table if not exists events (
   id text primary key,
   "createdAt" timestamptz not null,
   kind text not null,
+  "eventType" text,
   source text not null,
+  actor text,
   label text not null,
   "leadType" text,
   "relatedRecordId" text,
+  "leadId" text,
+  "customerId" text,
+  "jobId" text,
+  "contractorId" text,
+  "experimentId" text,
   "triggeringRule" text,
   "hermesRecommended" text,
+  recommendation text,
   "humanDecision" text,
+  outcome text,
+  "revenueImpact" numeric,
+  confidence numeric,
+  "riskLevel" text,
   agreed boolean,
   metadata jsonb
+);
+
+create table if not exists learning_records (
+  id text primary key,
+  "createdAt" timestamptz not null,
+  pattern text not null,
+  "evidenceCount" numeric not null,
+  "estimatedRevenueImpact" numeric not null,
+  confidence numeric not null,
+  "recommendedAction" text not null,
+  "autoImplementable" boolean not null default false,
+  "needsHumanApproval" boolean not null default false,
+  implemented boolean not null default false,
+  result text,
+  "actionStatus" text not null,
+  "riskLevel" text not null,
+  "sourceEventIds" jsonb not null default '[]'
+);
+
+create table if not exists celina_actions (
+  id text primary key,
+  "createdAt" timestamptz not null,
+  status text not null,
+  type text not null,
+  title text not null,
+  summary text not null,
+  "expectedRevenueImpact" numeric not null,
+  confidence numeric not null,
+  "riskLevel" text not null,
+  "approvalReason" text,
+  "learningRecordId" text,
+  "implementedAt" timestamptz,
+  result text
 );

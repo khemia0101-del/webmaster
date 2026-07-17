@@ -171,10 +171,18 @@ export async function routeLeadToRevenueDesk(lead: Lead) {
     id: uid("evt"),
     createdAt: at,
     kind: "revenue_desk_delivery",
+    eventType: "revenue_desk_delivery",
     source: "Conquistador Revenue Desk",
+    actor: "CelinaAmenBot",
     label: `Revenue Desk delivery ${finalDeliveryStatus}`,
     leadType: lead.type,
     relatedRecordId: lead.id,
+    leadId: lead.id,
+    recommendation: webhookNote,
+    outcome: finalDeliveryStatus || "failed",
+    revenueImpact: 0,
+    confidence: finalDeliveryStatus === "failed" ? 0.25 : 0.72,
+    riskLevel: requiresHuman(lead) ? "high" : "low",
     metadata: {
       deliveryStatus: finalDeliveryStatus || "failed",
       webhookNote
@@ -186,10 +194,18 @@ export async function routeLeadToRevenueDesk(lead: Lead) {
       id: uid("evt"),
       createdAt: at,
       kind: "email_reply_sent",
+      eventType: "email_reply_sent",
       source: "Zoho",
+      actor: "CelinaAmenBot",
       label: reply.subject,
       leadType: lead.type,
       relatedRecordId: lead.id,
+      leadId: lead.id,
+      recommendation: reply.body,
+      outcome: "reply_sent",
+      revenueImpact: 0,
+      confidence: 0.8,
+      riskLevel: requiresHuman(lead) ? "medium" : "low",
       metadata: { messageId: mail.messageId || "" }
     });
   }

@@ -1,9 +1,10 @@
-import { AlertTriangle, ClipboardList, FileCheck2, FlaskConical, Fuel, Gauge, UsersRound } from "lucide-react";
+import { AlertTriangle, BrainCircuit, ClipboardList, FileCheck2, FlaskConical, Fuel, Gauge, Target, UsersRound } from "lucide-react";
 import type { ReactNode } from "react";
 import { Badge, Section, Stat } from "@/components/ui";
 import { getEnvChecks, isProductionReadyEnv } from "@/lib/env";
 import { hermesExperimentRecommendation, summarizeExperiment, websiteExperiments } from "@/lib/experiments";
 import { contractorReadiness, evaluateJob, recommendDispatch } from "@/lib/hermes";
+import { computeLearning } from "@/lib/learning";
 import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +24,7 @@ export default async function AdminPage() {
   const activeContractors = store.contractors.filter((item) => item.status === "active");
   const envChecks = getEnvChecks();
   const productionReady = isProductionReadyEnv();
+  const learning = computeLearning(store);
 
   return (
     <Section className="grid gap-8">
@@ -39,9 +41,64 @@ export default async function AdminPage() {
 
       <div className="grid gap-3 md:grid-cols-4">
         <Stat label="Leads in CRM" value={store.leads.length} />
+        <Stat label="Booked revenue" value={money(learning.bookedGrossRevenue)} />
         <Stat label="Active contractors" value={activeContractors.length} />
-        <Stat label="Zones tracked" value={store.zones.length} />
-        <Stat label="Latest booked audits" value={latestKpi?.bookedAudits ?? 0} />
+        <Stat label="Goal progress" value={`${Math.round(learning.revenueProgress * 100)}%`} />
+      </div>
+
+      <Panel icon={<Target />} title="Celina Closed Revenue Loop">
+        <div className="grid gap-3 md:grid-cols-4">
+          <Stat label="Monthly target" value={money(learning.monthlyRevenueTarget)} />
+          <Stat label="Booked gross revenue" value={money(learning.bookedGrossRevenue)} />
+          <Stat label="Close rate" value={`${Math.round(learning.closeRate * 100)}%`} />
+          <Stat label="Follow-up success" value={`${Math.round(learning.followUpSuccessRate * 100)}%`} />
+        </div>
+        <p className="mt-4 rounded-md bg-[#edf5f8] p-3 text-sm font-semibold text-[#0b2f4a]">
+          {learning.biggestBottleneck}
+        </p>
+        <p className="mt-3 text-sm text-[#5c6570]">
+          Loop: Interact - capture signal - score outcome - extract learning - choose action - implement or request approval - measure result - update policy - repeat.
+        </p>
+      </Panel>
+
+      <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
+        <Panel icon={<BrainCircuit />} title="Newest Learnings">
+          <div className="grid gap-3">
+            {learning.learningRecords.slice(0, 5).map((item) => (
+              <article className="rounded-md border border-[#d8c2a6] bg-white p-4" key={item.id}>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="font-bold">{item.pattern}</h3>
+                  <Badge tone={item.autoImplementable ? "good" : item.needsHumanApproval ? "warn" : "neutral"}>{item.actionStatus}</Badge>
+                </div>
+                <p className="mt-2 text-sm text-[#5c6570]">{item.recommendedAction}</p>
+                <div className="mt-3 grid gap-2 text-sm md:grid-cols-3">
+                  <span className="rounded bg-[#f4eadb] px-3 py-2">Evidence: {item.evidenceCount}</span>
+                  <span className="rounded bg-[#f4eadb] px-3 py-2">Confidence: {Math.round(item.confidence * 100)}%</span>
+                  <span className="rounded bg-[#f4eadb] px-3 py-2">Impact: {money(item.estimatedRevenueImpact)}</span>
+                </div>
+              </article>
+            ))}
+          </div>
+        </Panel>
+
+        <Panel icon={<ClipboardList />} title="Celina Action Queue">
+          <div className="grid gap-3">
+            {learning.actionQueue.slice(0, 6).map((action) => (
+              <article className="rounded-md border border-[#d8c2a6] bg-white p-4" key={action.id}>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="font-bold">{action.title}</h3>
+                  <Badge tone={action.status === "auto_now" ? "good" : action.status === "approval_required" ? "warn" : action.status === "blocked" ? "bad" : "neutral"}>
+                    {action.status}
+                  </Badge>
+                </div>
+                <p className="mt-2 text-sm text-[#5c6570]">{action.summary}</p>
+                <p className="mt-3 text-xs font-semibold uppercase text-[#0b2f4a]">
+                  {action.type.replaceAll("_", " ")} | {action.riskLevel} risk | {money(action.expectedRevenueImpact)} expected impact
+                </p>
+              </article>
+            ))}
+          </div>
+        </Panel>
       </div>
 
       <Panel icon={<Gauge />} title="Production Readiness">
