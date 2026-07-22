@@ -20,6 +20,7 @@ export function SiteFooter() {
           <Link href="/commercial-fuel-delivery-lancaster">Fuel Delivery</Link>
           <Link href="/emergency-service">Emergency Service</Link>
           <Link href="/commercial-audit">Commercial Accounts</Link>
+          <Link href="/blog">Resource Center</Link>
           <Link href="/careers">Careers</Link>
         </div>
         <div className="grid gap-2 text-white/72">

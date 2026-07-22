@@ -9,6 +9,7 @@ const nav = [
   ["Fuel Delivery", "/commercial-fuel-delivery-lancaster"],
   ["Emergency", "/emergency-service"],
   ["Commercial Accounts", "/commercial-audit"],
+  ["Resources", "/blog"],
   ["Careers", "/careers"]
 ];
 

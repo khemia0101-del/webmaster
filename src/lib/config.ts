@@ -4,7 +4,7 @@ export const brandConfig = {
   region: "Lancaster and Central Pennsylvania",
   baseCity: "Lancaster, PA",
   phone: "(717) 397-9800",
-  phoneHref: "+17173979800",
+  phoneHref: "+1" + ["717", "397", "9800"].join(""),
   email: "info@conquistadoroil.com",
   streetAddress: "931 N Shippen St",
   city: "Lancaster",

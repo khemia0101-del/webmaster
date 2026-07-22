@@ -125,6 +125,48 @@ export function faqSchema(items: { question: string; answer: string }[], path: s
   };
 }
 
+export function articleSchema({
+  title,
+  description,
+  path,
+  publishedAt,
+  updatedAt
+}: {
+  title: string;
+  description: string;
+  path: string;
+  publishedAt: string;
+  updatedAt: string;
+}) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "@id": `${absoluteUrl(path)}#article`,
+    headline: title,
+    description,
+    datePublished: publishedAt,
+    dateModified: updatedAt,
+    mainEntityOfPage: absoluteUrl(path),
+    author: { "@id": `${siteUrl()}/#organization` },
+    publisher: { "@id": `${siteUrl()}/#organization` },
+    image: absoluteUrl("/brand/conquistador-oil-logo.png")
+  };
+}
+
+export function breadcrumbSchema(items: { name: string; path: string }[], path: string) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "@id": `${absoluteUrl(path)}#breadcrumb`,
+    itemListElement: items.map((item, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: item.name,
+      item: absoluteUrl(item.path)
+    }))
+  };
+}
+
 export function jobPostingSchema({
   title,
   description,

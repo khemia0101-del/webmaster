@@ -40,6 +40,7 @@ export function IntakeForm({
     setStatus("submitting");
     const form = new FormData(event.currentTarget);
     form.set("fallbackType", type);
+    form.set("source", new URLSearchParams(window.location.search).get("source") || source);
     form.set("experimentId", "home-hero-v1");
     form.set("variantId", readCookie("co_home_hero_variant") || "service-first");
     const response = await fetch("/api/intake", { method: "POST", body: form });

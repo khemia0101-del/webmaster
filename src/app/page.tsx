@@ -1,4 +1,4 @@
-import { BriefcaseBusiness, Building2, CheckCircle2, Clock, Flame, Fuel, MapPin, PhoneCall, Star, ThermometerSun } from "lucide-react";
+import { ArrowRight, BookOpen, BriefcaseBusiness, Building2, CheckCircle2, Clock, Flame, Fuel, MapPin, PhoneCall, Star, ThermometerSun } from "lucide-react";
 import type { Metadata } from "next";
 import Image from "next/image";
 import { cookies } from "next/headers";
@@ -7,6 +7,7 @@ import { FAQSection, FeatureGrid, PageHero } from "@/components/page-shell";
 import { JsonLd } from "@/components/structured-data";
 import { ButtonLink, Section } from "@/components/ui";
 import { brandConfig, coreServices, highIntentServiceLinks, serviceAreas } from "@/lib/config";
+import { blogPosts } from "@/lib/blog-posts";
 import { getVariant } from "@/lib/experiments";
 import { faqSchema, pageMetadata, serviceSchema } from "@/lib/seo";
 
@@ -166,6 +167,32 @@ export default async function Home() {
             <a className="rounded-lg border border-[#d8c2a6] bg-white p-4 text-sm font-bold text-[#0b2f4a] transition hover:border-[#b86a32]" href={service.href} key={service.href}>
               {service.label.replace(" Lancaster PA", "")}
             </a>
+          ))}
+        </div>
+      </Section>
+      <Section className="bg-[#fff9ee]">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div className="max-w-3xl">
+            <p className="mb-4 text-sm font-bold uppercase tracking-wide text-[#b86a32]">Fuel and heating resources</p>
+            <h2 className="text-3xl font-bold">Prepare a better request before you call.</h2>
+            <p className="mt-4 leading-7 text-[#5c6570]">
+              Source-backed guides for commercial operators, Lancaster-area homeowners, property managers, and independent contractors.
+            </p>
+          </div>
+          <ButtonLink href="/blog" variant="ghost">View All Guides</ButtonLink>
+        </div>
+        <div className="mt-7 grid gap-4 md:grid-cols-3">
+          {blogPosts.slice(0, 3).map((post) => (
+            <article className="flex h-full flex-col rounded-lg border border-[#d8c2a6] bg-white p-5 shadow-sm" key={post.slug}>
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-[#b86a32]">
+                <BookOpen size={16} /> {post.audience} guide
+              </div>
+              <h3 className="mt-3 text-xl font-bold leading-7 text-[#0b2f4a]">{post.shortTitle}</h3>
+              <p className="mt-3 flex-1 text-sm leading-6 text-[#5c6570]">{post.excerpt}</p>
+              <a className="mt-5 inline-flex items-center gap-2 font-bold text-[#0b2f4a] hover:text-[#b86a32]" href={`/blog/${post.slug}`}>
+                Read the guide <ArrowRight size={17} />
+              </a>
+            </article>
           ))}
         </div>
       </Section>
