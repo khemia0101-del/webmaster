@@ -16,6 +16,11 @@ export const metadata: Metadata = {
   },
   description: "Heating oil delivery, commercial fuel delivery, HVAC service requests, and emergency heating help from Conquistador Oil in Lancaster and Central Pennsylvania.",
   applicationName: "Conquistador Oil",
+  icons: {
+    icon: "/brand/conquistador-oil-logo.png",
+    apple: "/brand/conquistador-oil-logo.png",
+    shortcut: "/brand/conquistador-oil-logo.png"
+  },
   alternates: {
     canonical: "/"
   },
@@ -43,7 +48,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    <html data-scroll-behavior="smooth" lang="en">
       <body>
         <SiteHeader />
         <main>{children}</main>
