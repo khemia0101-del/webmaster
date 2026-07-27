@@ -40,6 +40,48 @@ export function getEnvChecks(): EnvCheck[] {
       requiredForProduction: false
     },
     {
+      key: "NEXT_PUBLIC_SUPABASE_URL",
+      label: "Supabase URL for durable Vercel lead queues",
+      present: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL),
+      requiredForProduction: false
+    },
+    {
+      key: "SUPABASE_SERVICE_ROLE_KEY",
+      label: "Supabase service role for durable Vercel lead queues",
+      present: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
+      requiredForProduction: false
+    },
+    {
+      key: "CRON_SECRET",
+      label: "Vercel phone follow-up cron authentication",
+      present: Boolean(process.env.CRON_SECRET),
+      requiredForProduction: false
+    },
+    {
+      key: "VAPI_WEBHOOK_SECRET",
+      label: "Vapi webhook bearer token",
+      present: Boolean(process.env.VAPI_WEBHOOK_SECRET),
+      requiredForProduction: false
+    },
+    {
+      key: "VAPI_API_KEY",
+      label: "Vapi server API key",
+      present: Boolean(process.env.VAPI_API_KEY),
+      requiredForProduction: false
+    },
+    {
+      key: "VAPI_SERVER_CREDENTIAL_ID",
+      label: "Vapi custom credential for authenticated callbacks",
+      present: Boolean(process.env.VAPI_SERVER_CREDENTIAL_ID),
+      requiredForProduction: false
+    },
+    {
+      key: "VAPI_PHONE_NUMBER_ID",
+      label: "Vapi outbound phone number ID",
+      present: Boolean(process.env.VAPI_PHONE_NUMBER_ID),
+      requiredForProduction: false
+    },
+    {
       key: "ZOHO_SMTP_USER",
       label: "Zoho email account",
       present: Boolean(process.env.ZOHO_SMTP_USER),

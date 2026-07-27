@@ -39,6 +39,7 @@ Live site: https://webmaster-mocha.vercel.app/
 - Optional Hermes Revenue Desk webhook
 - CelinaAmenBot closed-loop learning and action queue
 - Optional Zoho SMTP outbound email
+- Vapi inbound phone intake with deterministic contractor routing and compact Hermes audit events
 
 ## Local Development
 
@@ -92,6 +93,8 @@ ZOHO_FROM_EMAIL=info@conquistadoroil.com
 ZOHO_FROM_NAME=Conquistador Oil
 ```
 
+Vapi phone routing variables and connection steps are documented in [`docs/VAPI-INBOUND-SETUP.md`](docs/VAPI-INBOUND-SETUP.md). The production follow-up queue uses Supabase and a Vercel Cron invocation every 15 minutes.
+
 ## Lead Flow
 
 1. A visitor submits a form or chat inquiry.
@@ -99,6 +102,8 @@ ZOHO_FROM_NAME=Conquistador Oil
 3. If Revenue Desk webhook settings are present, the lead is handed off to the Conquistador Revenue Desk.
 4. If Zoho SMTP settings are present, outbound email replies can be sent from `info@conquistadoroil.com`.
 5. Emergency / no-heat leads use conservative language and direct customers to call `(717) 397-9800`.
+
+Inbound Vapi calls use a separate structured path: the assistant collects details, logs one compact lead, and warm-transfers eligible service inquiries only when at least three vetted contractors cover the requested service and area. Other inquiries and after-hours calls are saved for follow-up.
 
 Forms and chat are intentionally website-intake only. There is no public booking guarantee, pricing promise, payment flow, or automatic dispatch confirmation.
 

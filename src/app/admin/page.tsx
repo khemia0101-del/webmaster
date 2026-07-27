@@ -146,7 +146,23 @@ export default async function AdminPage() {
                   <Badge tone={lead.outboundEmailStatus === "sent" ? "good" : lead.outboundEmailStatus === "failed" ? "bad" : "neutral"}>
                     Email: {lead.outboundEmailStatus || "pending"}
                   </Badge>
+                  {lead.phoneRouting ? (
+                    <Badge
+                      tone={
+                        lead.phoneRouting.status === "transferred" || lead.phoneRouting.status === "contractor_notified"
+                          ? "good"
+                          : lead.phoneRouting.status === "failed" || lead.phoneRouting.status === "exhausted"
+                            ? "bad"
+                            : "warn"
+                      }
+                    >
+                      Phone: {lead.phoneRouting.status.replaceAll("_", " ")}
+                    </Badge>
+                  ) : null}
                 </div>
+                {lead.phoneRouting?.nextAttemptAt ? (
+                  <p className="mt-2 text-xs text-[#5c6570]">Next phone follow-up: {date(lead.phoneRouting.nextAttemptAt)}</p>
+                ) : null}
                 {lead.hermesReplyText ? (
                   <details className="mt-3 rounded-md bg-[#f4eadb] p-3 text-sm">
                     <summary className="cursor-pointer font-semibold text-[#0b2f4a]">Revenue Desk reply</summary>

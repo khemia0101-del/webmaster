@@ -18,7 +18,8 @@ create table if not exists leads (
   details jsonb not null default '{}',
   "paymentRequirement" text not null,
   "hermesRecommendation" text not null,
-  "safetyCritical" boolean not null default false
+  "safetyCritical" boolean not null default false,
+  "phoneRouting" jsonb
 );
 
 create table if not exists customers (
@@ -47,7 +48,8 @@ create table if not exists contractors (
   -- Reliability fields (Technical Review Rec #3)
   "lastVerified" text,
   "verificationStatus" text,
-  "verificationConfidence" text
+  "verificationConfidence" text,
+  "routingProfile" jsonb
 );
 
 create table if not exists jobs (
@@ -187,3 +189,14 @@ create table if not exists celina_actions (
   "implementedAt" timestamptz,
   result text
 );
+
+-- Additions for existing databases created before phone routing was introduced.
+alter table leads add column if not exists "phoneRouting" jsonb;
+alter table contractors add column if not exists "routingProfile" jsonb;
+
+create unique index if not exists leads_vapi_call_id_unique
+  on leads (("phoneRouting"->>'vapiCallId'))
+  where "phoneRouting"->>'vapiCallId' is not null;
+
+create index if not exists leads_phone_routing_status_idx
+  on leads (("phoneRouting"->>'status'));

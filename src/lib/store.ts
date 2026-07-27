@@ -7,14 +7,25 @@ import { buildLeadArtifacts, classifyLead, isSafetyCritical, recommendationFor }
 import {
   applyDecision as sbApplyDecision,
   findApproval as sbFindApproval,
+  findLeadByVapiCallId as sbFindLeadByVapiCallId,
   insertActivity as sbInsertActivity,
   insertEvent as sbInsertEvent,
   insertLead as sbInsertLead,
   readStore as sbReadStore,
   supabaseConfigured,
+  updateContractor as sbUpdateContractor,
   updateLead as sbUpdateLead
 } from "@/lib/supabase";
-import type { ApprovalRequest, HermesActivity, InteractionEvent, Lead, LeadType, Store } from "@/lib/types";
+import type {
+  ApprovalRequest,
+  HermesActivity,
+  InteractionEvent,
+  Lead,
+  LeadType,
+  PhoneInquiryKind,
+  PhoneRoutingState,
+  Store
+} from "@/lib/types";
 
 const dataDir =
   process.env.DATA_DIR ||
@@ -180,29 +191,187 @@ export async function createLead(form: FormData, fallbackType: LeadType) {
   return lead;
 }
 
+export type PhoneLeadInput = {
+  vapiCallId: string;
+  inquiryKind: PhoneInquiryKind;
+  callerName: string;
+  callbackNumber: string;
+  email?: string;
+  serviceType: string;
+  issue: string;
+  summary: string;
+  address?: string;
+  city?: string;
+  postalCode?: string;
+  urgency?: string;
+  consentToShare: boolean;
+};
+
+function phoneFallbackType(input: PhoneLeadInput): LeadType {
+  if (input.inquiryKind === "careers") return "hiring";
+  if (input.inquiryKind !== "service") return "other";
+  const service = `${input.serviceType} ${input.issue}`.toLowerCase();
+  if (/diesel|fuel|heating oil|oil delivery|kerosene/.test(service)) return "fuel";
+  if (/commercial|property manager|multi[ -]?site/.test(service)) return "commercial_quote";
+  return "other";
+}
+
+/** Persist one structured phone inquiry. Raw transcripts and recordings never enter the store. */
+export async function createPhoneLead(input: PhoneLeadInput): Promise<Lead> {
+  const existing = await findLeadByVapiCallId(input.vapiCallId);
+  if (existing) return existing;
+
+  const createdAt = new Date().toISOString();
+  const details: Record<string, string> = {
+    inquiryKind: input.inquiryKind,
+    serviceType: input.serviceType,
+    issue: input.issue,
+    summary: input.summary,
+    city: input.city ?? "",
+    postalCode: input.postalCode ?? "",
+    urgency: input.urgency ?? "Not specified",
+    consentToShare: String(input.consentToShare)
+  };
+  const fallback = phoneFallbackType(input);
+  const type = classifyLead(details, fallback);
+  const safetyCritical = isSafetyCritical(details);
+  const callSuffix = input.vapiCallId.replace(/[^a-zA-Z0-9]/g, "").slice(-12) || Math.random().toString(16).slice(2);
+  const routing: PhoneRoutingState = {
+    vapiCallId: input.vapiCallId,
+    inquiryKind: input.inquiryKind,
+    serviceType: input.serviceType,
+    consentToShare: input.consentToShare,
+    status: "collecting",
+    candidateContractorIds: [],
+    attemptedContractorIds: []
+  };
+  const lead: Lead = {
+    id: `lead-phone-${Date.now()}-${callSuffix}`,
+    createdAt,
+    source: "Vapi Phone",
+    type,
+    status: safetyCritical ? "human_escalation" : "new",
+    hermesDeliveryStatus: "pending",
+    outboundEmailStatus: "not_applicable",
+    name: input.callerName || "Phone caller",
+    phone: input.callbackNumber,
+    email: input.email,
+    siteAddress: input.address,
+    zone: input.city || input.postalCode || "Unknown",
+    details,
+    paymentRequirement: "No payment is collected or authorized by the phone assistant.",
+    hermesRecommendation: recommendationFor(type, safetyCritical),
+    safetyCritical,
+    phoneRouting: routing
+  };
+
+  const artifacts = buildLeadArtifacts(lead);
+  const events: InteractionEvent[] = [
+    {
+      id: uid("evt"),
+      createdAt,
+      kind: "phone_inquiry_logged",
+      eventType: "phone_inquiry_logged",
+      source: "Vapi",
+      actor: "Phone assistant",
+      label: `Logged ${input.inquiryKind} phone inquiry`,
+      leadType: type,
+      relatedRecordId: lead.id,
+      leadId: lead.id,
+      outcome: "lead_created",
+      confidence: 1,
+      riskLevel: safetyCritical ? "critical" : "low",
+      metadata: {
+        inquiryKind: input.inquiryKind,
+        serviceType: input.serviceType,
+        zone: lead.zone,
+        consentToShare: String(input.consentToShare)
+      }
+    }
+  ];
+
+  if (supabaseConfigured()) {
+    try {
+      await sbInsertLead(lead, artifacts.approvals, artifacts.activity, events);
+    } catch (error) {
+      const duplicate = await sbFindLeadByVapiCallId(input.vapiCallId).catch(() => null);
+      if (duplicate) return duplicate;
+      throw error;
+    }
+    return lead;
+  }
+
+  const store = await readLocalStore();
+  store.leads.unshift(lead);
+  store.approvalRequests.unshift(...artifacts.approvals);
+  store.hermesActivity.unshift(...artifacts.activity);
+  store.events.unshift(...events);
+  await writeLocalStore(store);
+  return lead;
+}
+
+export async function findLeadByVapiCallId(callId: string): Promise<Lead | null> {
+  if (!callId) return null;
+  if (supabaseConfigured()) return sbFindLeadByVapiCallId(callId);
+  const store = await getStore();
+  return store.leads.find((lead) => lead.phoneRouting?.vapiCallId === callId) ?? null;
+}
+
+export async function updateLeadWithAudit(
+  id: string,
+  patch: Partial<Lead>,
+  activity: HermesActivity[] = [],
+  events: InteractionEvent[] = []
+) {
+  if (supabaseConfigured()) {
+    await sbUpdateLead(id, patch);
+    for (const item of activity) await sbInsertActivity(item);
+    for (const item of events) await sbInsertEvent(item);
+    return;
+  }
+
+  const store = await readLocalStore();
+  const lead = store.leads.find((item) => item.id === id);
+  if (!lead) throw new Error(`Lead ${id} was not found.`);
+  Object.assign(lead, patch);
+  store.hermesActivity.unshift(...activity);
+  store.events.unshift(...events);
+  await writeLocalStore(store);
+}
+
+export async function markContractorAssigned(contractorId: string, at = new Date()) {
+  const store = await getStore();
+  const contractor = store.contractors.find((item) => item.id === contractorId);
+  if (!contractor?.routingProfile) return;
+  const assignmentDate = at.toISOString().slice(0, 10);
+  const routingProfile = {
+    ...contractor.routingProfile,
+    lastAssignedAt: at.toISOString(),
+    assignmentsDate: assignmentDate,
+    assignmentsToday:
+      contractor.routingProfile.assignmentsDate === assignmentDate
+        ? (contractor.routingProfile.assignmentsToday ?? 0) + 1
+        : 1
+  };
+
+  if (supabaseConfigured()) {
+    await sbUpdateContractor(contractorId, { routingProfile });
+    return;
+  }
+  const local = await readLocalStore();
+  const localContractor = local.contractors.find((item) => item.id === contractorId);
+  if (!localContractor) return;
+  localContractor.routingProfile = routingProfile;
+  await writeLocalStore(local);
+}
+
 export async function updateLeadRevenueDeskState(
   id: string,
   patch: Pick<Partial<Lead>, "status" | "hermesDeliveryStatus" | "hermesReplyText" | "outboundEmailStatus" | "lastFollowUpAt">,
   activity: HermesActivity[] = [],
   events: InteractionEvent[] = []
 ) {
-  if (supabaseConfigured()) {
-    await sbUpdateLead(id, patch);
-    for (const item of activity) {
-      await sbInsertActivity(item);
-    }
-    for (const item of events) {
-      await sbInsertEvent(item);
-    }
-    return;
-  }
-
-  const store = await readLocalStore();
-  const lead = store.leads.find((item) => item.id === id);
-  if (lead) Object.assign(lead, patch);
-  store.hermesActivity.unshift(...activity);
-  store.events.unshift(...events);
-  await writeLocalStore(store);
+  await updateLeadWithAudit(id, patch, activity, events);
 }
 
 /**
@@ -284,11 +453,13 @@ export async function exportStoreJson() {
 export async function exportLeadsCsv() {
   const store = await getStore();
   const rows = [
-    ["createdAt", "type", "status", "hermesDeliveryStatus", "outboundEmailStatus", "name", "company", "phone", "email", "siteAddress", "zone", "safetyCritical"],
+    ["createdAt", "type", "status", "phoneRoutingStatus", "nextPhoneAttemptAt", "hermesDeliveryStatus", "outboundEmailStatus", "name", "company", "phone", "email", "siteAddress", "zone", "safetyCritical"],
     ...store.leads.map((lead) => [
       lead.createdAt,
       lead.type,
       lead.status,
+      lead.phoneRouting?.status ?? "",
+      lead.phoneRouting?.nextAttemptAt ?? "",
       lead.hermesDeliveryStatus ?? "",
       lead.outboundEmailStatus ?? "",
       lead.name,

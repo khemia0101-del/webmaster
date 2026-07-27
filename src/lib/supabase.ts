@@ -4,6 +4,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { seedStore } from "@/data/seed";
 import type {
   ApprovalRequest,
+  Contractor,
   HermesActivity,
   InteractionEvent,
   Lead,
@@ -102,22 +103,40 @@ export async function insertLead(
   events: InteractionEvent[]
 ): Promise<void> {
   const db = supabase();
-  await db.from(TABLES.leads).insert(lead);
-  if (approvals.length) await db.from(TABLES.approvalRequests).insert(approvals);
-  if (activity.length) await db.from(TABLES.hermesActivity).insert(activity);
-  if (events.length) await db.from(TABLES.events).insert(events);
+  const leadResult = await db.from(TABLES.leads).insert(lead);
+  if (leadResult.error) throw leadResult.error;
+  if (approvals.length) {
+    const result = await db.from(TABLES.approvalRequests).insert(approvals);
+    if (result.error) throw result.error;
+  }
+  if (activity.length) {
+    const result = await db.from(TABLES.hermesActivity).insert(activity);
+    if (result.error) throw result.error;
+  }
+  if (events.length) {
+    const result = await db.from(TABLES.events).insert(events);
+    if (result.error) throw result.error;
+  }
 }
 
 export async function insertEvent(event: InteractionEvent): Promise<void> {
-  await supabase().from(TABLES.events).insert(event);
+  const result = await supabase().from(TABLES.events).insert(event);
+  if (result.error) throw result.error;
 }
 
 export async function insertActivity(activity: HermesActivity): Promise<void> {
-  await supabase().from(TABLES.hermesActivity).insert(activity);
+  const result = await supabase().from(TABLES.hermesActivity).insert(activity);
+  if (result.error) throw result.error;
 }
 
 export async function updateLead(id: string, patch: Partial<Lead>): Promise<void> {
-  await supabase().from(TABLES.leads).update(patch).eq("id", id);
+  const result = await supabase().from(TABLES.leads).update(patch).eq("id", id);
+  if (result.error) throw result.error;
+}
+
+export async function updateContractor(id: string, patch: Partial<Contractor>): Promise<void> {
+  const result = await supabase().from(TABLES.contractors).update(patch).eq("id", id);
+  if (result.error) throw result.error;
 }
 
 export async function applyDecision(
@@ -142,6 +161,16 @@ export async function applyDecision(
 export async function findApproval(id: string): Promise<ApprovalRequest | null> {
   const { data } = await supabase().from(TABLES.approvalRequests).select("*").eq("id", id).maybeSingle();
   return (data as ApprovalRequest) ?? null;
+}
+
+export async function findLeadByVapiCallId(callId: string): Promise<Lead | null> {
+  const result = await supabase()
+    .from(TABLES.leads)
+    .select("*")
+    .filter("phoneRouting->>vapiCallId", "eq", callId)
+    .maybeSingle();
+  if (result.error) throw result.error;
+  return (result.data as Lead) ?? null;
 }
 
 /**
