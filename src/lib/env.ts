@@ -41,7 +41,7 @@ export function getEnvChecks(): EnvCheck[] {
     },
     {
       key: "VAPI_WEBHOOK_SECRET",
-      label: "Vapi webhook bearer token",
+      label: "Vapi webhook shared secret",
       present: Boolean(process.env.VAPI_WEBHOOK_SECRET),
       requiredForProduction: false
     },

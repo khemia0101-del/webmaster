@@ -9,19 +9,19 @@ same compact handoff when one is available.
 No call recording, Vapi logging, full message history, or stored transcript is
 enabled. Hermes receives confirmed fields and a short summary, not the raw call.
 
-## Required environment
+## Merge and preview deployment
 
-Copy `.env.example` and replace every `REPLACE_WITH_...` value. For the phone
-flow, these values must be configured in Vercel:
+PR #2 does not require any environment variables to compile, test, or create a
+Vercel preview. Missing runtime integrations remain inactive.
+
+## Production environment before live phone calls
+
+Add these values to Vercel before attaching the live Vapi number:
 
 ```env
 NEXT_PUBLIC_SITE_URL=https://YOUR_PRODUCTION_DOMAIN
 
 VAPI_WEBHOOK_SECRET=YOUR_RANDOM_64_CHARACTER_SECRET
-VAPI_MODEL_PROVIDER=openai
-VAPI_MODEL=gpt-5.4-mini
-
-PHONE_ROUTING_MIN_CONTRACTORS=3
 
 ZOHO_SMTP_HOST=smtp.zoho.com
 ZOHO_SMTP_PORT=465
@@ -36,22 +36,28 @@ HERMES_REVENUE_DESK_WEBHOOK_URL=
 HERMES_REVENUE_DESK_SECRET=
 ```
 
+The app already defaults to `openai`, `gpt-5.4-mini`, and a three-contractor
+activation threshold. Their override variables do not need to be added.
+
 `VAPI_API_KEY`, `VAPI_PHONE_NUMBER_ID`, `CRON_SECRET`, and database variables
 are not needed by this inbound-only implementation.
 
-## Connect Vapi
+## Connect Vapi later
 
 1. Deploy the app and set the production variables above.
-2. In Vapi, create a Bearer Token custom credential.
-3. Use the exact `VAPI_WEBHOOK_SECRET` value as its token.
-4. Keep the header as `Authorization` and enable the Bearer prefix.
-5. Save the credential. You do not need to copy its generated ID into Vercel.
-6. Configure the Vapi phone number with no fixed assistant.
-7. Set the phone number server URL to:
+2. Configure the Vapi phone number with no fixed assistant.
+3. Set the phone number server URL to:
 
    `https://YOUR_PRODUCTION_DOMAIN/api/vapi/webhook`
 
-8. Select the saved Bearer credential in the phone number server settings.
+4. Configure that server request to send the exact `VAPI_WEBHOOK_SECRET` value
+   in either `Authorization: Bearer <secret>` or `X-Vapi-Secret: <secret>`.
+
+If the dashboard only shows Vapi public/private API keys, that is expected.
+Those keys authenticate calls to Vapi's API; they are not the webhook secret.
+The phone number's `server.headers` can be configured during the later number
+integration using the Vapi API and the private key. Do not expose the private
+key in client code or reuse it as `VAPI_WEBHOOK_SECRET`.
 
 With no fixed assistant, Vapi sends an `assistant-request` and the app returns
 the controlled transient assistant.

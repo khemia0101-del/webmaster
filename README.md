@@ -84,9 +84,6 @@ HERMES_REVENUE_DESK_SECRET=
 CELINA_COMMAND_SECRET=YOUR_RANDOM_64_CHARACTER_SECRET
 
 VAPI_WEBHOOK_SECRET=YOUR_RANDOM_64_CHARACTER_SECRET
-VAPI_MODEL_PROVIDER=openai
-VAPI_MODEL=gpt-5.4-mini
-PHONE_ROUTING_MIN_CONTRACTORS=3
 
 ZOHO_SMTP_HOST=smtp.zoho.com
 ZOHO_SMTP_PORT=465
@@ -96,6 +93,10 @@ ZOHO_FROM_EMAIL=info@conquistadoroil.com
 ZOHO_FROM_NAME=Conquistador Oil
 PHONE_LEAD_NOTIFICATION_EMAIL=info@conquistadoroil.com
 ```
+
+`VAPI_MODEL_PROVIDER=openai`, `VAPI_MODEL=gpt-5.4-mini`, and
+`PHONE_ROUTING_MIN_CONTRACTORS=3` are built-in defaults, so they do not need to
+be added to Vercel unless you want to override them.
 
 Vapi phone routing variables and connection steps are documented in [`docs/VAPI-INBOUND-SETUP.md`](docs/VAPI-INBOUND-SETUP.md). Production phone leads are sent immediately to the internal Zoho inbox and, when configured, the optional Hermes Revenue Desk webhook. There is no database-backed cron queue.
 

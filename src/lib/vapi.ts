@@ -19,8 +19,11 @@ export function normalizeE164(value: string | undefined) {
 export function vapiWebhookAuthorized(request: Request) {
   const secret = process.env.VAPI_WEBHOOK_SECRET?.trim();
   if (!secret) return process.env.NODE_ENV !== "production";
-  const header = request.headers.get("authorization") ?? "";
-  const supplied = header.startsWith("Bearer ") ? header.slice(7) : "";
+  const authorization = request.headers.get("authorization") ?? "";
+  const supplied =
+    (authorization.startsWith("Bearer ") ? authorization.slice(7) : "") ||
+    request.headers.get("x-vapi-secret") ||
+    "";
   const expectedBuffer = Buffer.from(secret);
   const suppliedBuffer = Buffer.from(supplied);
   return (
