@@ -110,7 +110,7 @@ export async function POST(request: Request) {
     case "assistant-request": {
       const store = await getStore();
       return NextResponse.json({
-        assistant: buildInboundAssistant(request.url, store.contractors)
+        assistant: buildInboundAssistant(store.contractors)
       });
     }
     case "tool-calls":

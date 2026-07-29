@@ -4,7 +4,7 @@ import { timingSafeEqual } from "crypto";
 import { isContractorOpen } from "@/lib/phone-routing";
 import type { Contractor } from "@/lib/types";
 
-const DEFAULT_MODEL = "gpt-4o-mini";
+const DEFAULT_MODEL = "gpt-5.4-mini";
 
 export function normalizeE164(value: string | undefined) {
   const raw = (value ?? "").trim();
@@ -27,16 +27,6 @@ export function vapiWebhookAuthorized(request: Request) {
     expectedBuffer.length === suppliedBuffer.length &&
     timingSafeEqual(expectedBuffer, suppliedBuffer)
   );
-}
-
-function serverConfig(serverUrl?: string) {
-  if (!serverUrl) return undefined;
-  const credentialId = process.env.VAPI_SERVER_CREDENTIAL_ID?.trim();
-  if (!credentialId) return undefined;
-  return {
-    url: serverUrl,
-    credentialId
-  };
 }
 
 function artifactPlan() {
@@ -97,10 +87,8 @@ function configuredTransferDestinations(contractors: Contractor[]) {
 }
 
 export function buildInboundAssistant(
-  serverUrl: string | undefined,
   contractors: Contractor[] = []
 ) {
-  const server = serverConfig(serverUrl);
   const destinations = configuredTransferDestinations(contractors);
   const tools: Record<string, unknown>[] = [
     {
@@ -194,7 +182,6 @@ export function buildInboundAssistant(
     maxDurationSeconds: 600,
     backgroundSound: "off",
     artifactPlan: artifactPlan(),
-    ...(server ? { server } : {}),
     serverMessages: ["tool-calls"],
     model: {
       provider: process.env.VAPI_MODEL_PROVIDER?.trim() || "openai",

@@ -46,12 +46,6 @@ export function getEnvChecks(): EnvCheck[] {
       requiredForProduction: false
     },
     {
-      key: "VAPI_SERVER_CREDENTIAL_ID",
-      label: "Vapi custom credential for authenticated callbacks",
-      present: Boolean(process.env.VAPI_SERVER_CREDENTIAL_ID),
-      requiredForProduction: false
-    },
-    {
       key: "ZOHO_SMTP_USER",
       label: "Zoho email account",
       present: Boolean(process.env.ZOHO_SMTP_USER),

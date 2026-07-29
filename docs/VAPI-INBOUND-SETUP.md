@@ -18,9 +18,8 @@ flow, these values must be configured in Vercel:
 NEXT_PUBLIC_SITE_URL=https://YOUR_PRODUCTION_DOMAIN
 
 VAPI_WEBHOOK_SECRET=YOUR_RANDOM_64_CHARACTER_SECRET
-VAPI_SERVER_CREDENTIAL_ID=YOUR_VAPI_CUSTOM_CREDENTIAL_ID
 VAPI_MODEL_PROVIDER=openai
-VAPI_MODEL=gpt-4o-mini
+VAPI_MODEL=gpt-5.4-mini
 
 PHONE_ROUTING_MIN_CONTRACTORS=3
 
@@ -46,13 +45,13 @@ are not needed by this inbound-only implementation.
 2. In Vapi, create a Bearer Token custom credential.
 3. Use the exact `VAPI_WEBHOOK_SECRET` value as its token.
 4. Keep the header as `Authorization` and enable the Bearer prefix.
-5. Save the resulting credential ID as `VAPI_SERVER_CREDENTIAL_ID` in Vercel.
+5. Save the credential. You do not need to copy its generated ID into Vercel.
 6. Configure the Vapi phone number with no fixed assistant.
 7. Set the phone number server URL to:
 
    `https://YOUR_PRODUCTION_DOMAIN/api/vapi/webhook`
 
-8. Attach the same custom credential to the phone number server.
+8. Select the saved Bearer credential in the phone number server settings.
 
 With no fixed assistant, Vapi sends an `assistant-request` and the app returns
 the controlled transient assistant.
