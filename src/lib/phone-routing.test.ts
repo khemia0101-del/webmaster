@@ -33,8 +33,7 @@ function lead(overrides: Partial<Lead> = {}): Lead {
       serviceType: "HVAC repair",
       consentToShare: true,
       status: "collecting",
-      candidateContractorIds: [],
-      attemptedContractorIds: []
+      candidateContractorIds: []
     },
     ...overrides
   };

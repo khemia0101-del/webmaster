@@ -28,6 +28,7 @@ function requiresHuman(lead: Lead) {
 
 function leadSummary(lead: Lead) {
   const service = lead.details.serviceType || lead.details.fuelType || lead.details.roleInterest || lead.type.replaceAll("_", " ");
+  const phoneLead = lead.source === "Vapi Phone";
   return {
     id: lead.id,
     createdAt: lead.createdAt,
@@ -43,18 +44,45 @@ function leadSummary(lead: Lead) {
     service,
     safetyCritical: lead.safetyCritical,
     hermesRecommendation: lead.hermesRecommendation,
-    details: lead.details,
-    chatTranscript: lead.chatTranscript
+    details: phoneLead
+      ? {
+          inquiryKind: lead.details.inquiryKind,
+          summary: lead.details.summary,
+          city: lead.details.city,
+          postalCode: lead.details.postalCode,
+          urgency: lead.details.urgency,
+          consentToShare: lead.details.consentToShare
+        }
+      : lead.details,
+    phoneRouting: phoneLead
+      ? {
+          status: lead.phoneRouting?.status,
+          nextAttemptAt: lead.phoneRouting?.nextAttemptAt
+        }
+      : undefined,
+    chatTranscript: phoneLead ? undefined : lead.chatTranscript
   };
 }
 
 function fallbackReply(lead: Lead) {
   const urgent = requiresHuman(lead);
+  const phoneLead = lead.source === "Vapi Phone";
   const subject = urgent
     ? "We received your Conquistador Oil request"
     : "Thanks for contacting Conquistador Oil";
   const body = urgent
-    ? [
+    ? phoneLead
+      ? [
+          `Hi ${lead.name},`,
+          "",
+          "Thank you for calling Conquistador Oil. The virtual assistant recorded your request and flagged it for human review.",
+          "",
+          "We will use the confirmed contact details you provided to follow up. If conditions become dangerous, contact the appropriate local emergency service directly.",
+          "",
+          "Conquistador Oil",
+          brandConfig.email
+        ].join("\n")
+      : [
         `Hi ${lead.name},`,
         "",
         "Thank you for contacting Conquistador Oil. We received your request and flagged it for human review.",
@@ -98,7 +126,7 @@ async function callRevenueDeskWebhook(lead: Lead): Promise<RevenueDeskWebhookRep
       },
       body: JSON.stringify({
         targetAgent: "Conquistador Revenue Desk",
-        mode: "website_inquiry",
+        mode: lead.source === "Vapi Phone" ? "phone_inquiry" : "website_inquiry",
         autoReplyAllowed: true,
         humanRequired: requiresHuman(lead),
         business: {
@@ -114,7 +142,10 @@ async function callRevenueDeskWebhook(lead: Lead): Promise<RevenueDeskWebhookRep
           "Do not guarantee dispatch or response time.",
           "Do not claim licensing or availability beyond approved business data.",
           "Emergency, no-heat, safety, pricing, hiring decisions, and contractor approvals require human attention.",
-          `For urgent issues, tell the customer to call ${brandConfig.phone}.`
+          "Never call, transfer to, or claim to contact 911.",
+          lead.source === "Vapi Phone"
+            ? "Urgent phone inquiries require human follow-up; do not route the caller back into the same phone assistant."
+            : `For urgent issues, tell the customer to call ${brandConfig.phone}.`
         ],
         lead: leadSummary(lead)
       }),
@@ -133,12 +164,14 @@ export async function routeLeadToRevenueDesk(lead: Lead) {
   const activities: HermesActivity[] = [];
   const events: InteractionEvent[] = [];
   let deliveryStatus: Lead["hermesDeliveryStatus"] = requiresHuman(lead) ? "needs_human" : "sent";
+  let webhookDelivered = false;
   let reply = fallbackReply(lead);
   let webhookNote = "Revenue Desk webhook is not configured; used conservative local reply template.";
 
   try {
     const webhookReply = await callRevenueDeskWebhook(lead);
     if (webhookReply) {
+      webhookDelivered = true;
       webhookNote = webhookReply.nextAction || "Revenue Desk webhook accepted the lead.";
       reply = {
         subject: webhookReply.replySubject || webhookReply.subject || reply.subject,
@@ -222,4 +255,10 @@ export async function routeLeadToRevenueDesk(lead: Lead) {
     activities,
     events
   );
+
+  return {
+    webhookDelivered,
+    deliveryStatus: finalDeliveryStatus,
+    emailStatus
+  };
 }

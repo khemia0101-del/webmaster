@@ -35,7 +35,6 @@ Live site: https://webmaster-mocha.vercel.app/
 - TypeScript
 - Tailwind CSS
 - Vercel deployment
-- Optional Supabase persistence
 - Optional Hermes Revenue Desk webhook
 - CelinaAmenBot closed-loop learning and action queue
 - Optional Zoho SMTP outbound email
@@ -76,24 +75,30 @@ The project uses a custom Next output directory:
 Copy `.env.example` and fill production values as needed.
 
 ```env
-NEXT_PUBLIC_SITE_URL=https://webmaster-mocha.vercel.app
-DATA_DIR=.data
-ADMIN_USERNAME=
-ADMIN_PASSWORD=
+NEXT_PUBLIC_SITE_URL=https://YOUR_PRODUCTION_DOMAIN
+ADMIN_USERNAME=YOUR_ADMIN_USERNAME
+ADMIN_PASSWORD=YOUR_LONG_RANDOM_PASSWORD
 
 HERMES_REVENUE_DESK_WEBHOOK_URL=
 HERMES_REVENUE_DESK_SECRET=
-CELINA_COMMAND_SECRET=
+CELINA_COMMAND_SECRET=YOUR_RANDOM_64_CHARACTER_SECRET
+
+VAPI_WEBHOOK_SECRET=YOUR_RANDOM_64_CHARACTER_SECRET
+VAPI_SERVER_CREDENTIAL_ID=YOUR_VAPI_CUSTOM_CREDENTIAL_ID
+VAPI_MODEL_PROVIDER=openai
+VAPI_MODEL=gpt-4o-mini
+PHONE_ROUTING_MIN_CONTRACTORS=3
 
 ZOHO_SMTP_HOST=smtp.zoho.com
 ZOHO_SMTP_PORT=465
-ZOHO_SMTP_USER=info@conquistadoroil.com
-ZOHO_SMTP_PASS=
+ZOHO_SMTP_USER=YOUR_ZOHO_MAILBOX
+ZOHO_SMTP_PASS=YOUR_ZOHO_APP_PASSWORD
 ZOHO_FROM_EMAIL=info@conquistadoroil.com
 ZOHO_FROM_NAME=Conquistador Oil
+PHONE_LEAD_NOTIFICATION_EMAIL=info@conquistadoroil.com
 ```
 
-Vapi phone routing variables and connection steps are documented in [`docs/VAPI-INBOUND-SETUP.md`](docs/VAPI-INBOUND-SETUP.md). The production follow-up queue uses Supabase and a Vercel Cron invocation every 15 minutes.
+Vapi phone routing variables and connection steps are documented in [`docs/VAPI-INBOUND-SETUP.md`](docs/VAPI-INBOUND-SETUP.md). Production phone leads are sent immediately to the internal Zoho inbox and, when configured, the optional Hermes Revenue Desk webhook. There is no database-backed cron queue.
 
 ## Lead Flow
 
@@ -103,7 +108,7 @@ Vapi phone routing variables and connection steps are documented in [`docs/VAPI-
 4. If Zoho SMTP settings are present, outbound email replies can be sent from `info@conquistadoroil.com`.
 5. Emergency / no-heat leads use conservative language and direct customers to call `(717) 397-9800`.
 
-Inbound Vapi calls use a separate structured path: the assistant collects details, logs one compact lead, and warm-transfers eligible service inquiries only when at least three vetted contractors cover the requested service and area. Other inquiries and after-hours calls are saved for follow-up.
+Inbound Vapi calls use a separate structured path: the assistant collects details, sends one compact lead to the internal inbox and optional Hermes webhook, and warm-transfers eligible service inquiries only when at least three vetted contractors cover the requested service and area. Other inquiries and after-hours calls are handed off for follow-up.
 
 Forms and chat are intentionally website-intake only. There is no public booking guarantee, pricing promise, payment flow, or automatic dispatch confirmation.
 
@@ -158,9 +163,8 @@ The placeholder service images are branded illustrations, not claimed real field
 ## Admin and Data Notes
 
 - `/admin` and protected API routes use Basic Auth when `ADMIN_USERNAME` and `ADMIN_PASSWORD` are configured.
-- Without Supabase configuration, local JSON storage is used under `DATA_DIR`.
+- Local JSON supports development and demos; `DATA_DIR` may override its local path. Do not set `DATA_DIR` on Vercel because deployed files are temporary and are not the durable record for production phone leads.
 - `/api/export/leads` and `/api/export/store` provide authenticated backup/export paths.
-- `src/lib/supabase-schema.sql` is available for Supabase-backed deployments.
 
 ## Safety Notes
 

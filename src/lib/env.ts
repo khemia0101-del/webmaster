@@ -10,12 +10,6 @@ export type EnvCheck = {
 export function getEnvChecks(): EnvCheck[] {
   return [
     {
-      key: "DATA_DIR",
-      label: "Persistent local data directory",
-      present: true,
-      requiredForProduction: true
-    },
-    {
       key: "ADMIN_USERNAME",
       label: "Admin username",
       present: Boolean(process.env.ADMIN_USERNAME),
@@ -40,21 +34,9 @@ export function getEnvChecks(): EnvCheck[] {
       requiredForProduction: false
     },
     {
-      key: "NEXT_PUBLIC_SUPABASE_URL",
-      label: "Supabase URL for durable Vercel lead queues",
-      present: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL),
-      requiredForProduction: false
-    },
-    {
-      key: "SUPABASE_SERVICE_ROLE_KEY",
-      label: "Supabase service role for durable Vercel lead queues",
-      present: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
-      requiredForProduction: false
-    },
-    {
-      key: "CRON_SECRET",
-      label: "Vercel phone follow-up cron authentication",
-      present: Boolean(process.env.CRON_SECRET),
+      key: "HERMES_REVENUE_DESK_SECRET",
+      label: "Conquistador Revenue Desk webhook secret",
+      present: Boolean(process.env.HERMES_REVENUE_DESK_SECRET),
       requiredForProduction: false
     },
     {
@@ -64,21 +46,9 @@ export function getEnvChecks(): EnvCheck[] {
       requiredForProduction: false
     },
     {
-      key: "VAPI_API_KEY",
-      label: "Vapi server API key",
-      present: Boolean(process.env.VAPI_API_KEY),
-      requiredForProduction: false
-    },
-    {
       key: "VAPI_SERVER_CREDENTIAL_ID",
       label: "Vapi custom credential for authenticated callbacks",
       present: Boolean(process.env.VAPI_SERVER_CREDENTIAL_ID),
-      requiredForProduction: false
-    },
-    {
-      key: "VAPI_PHONE_NUMBER_ID",
-      label: "Vapi outbound phone number ID",
-      present: Boolean(process.env.VAPI_PHONE_NUMBER_ID),
       requiredForProduction: false
     },
     {
@@ -91,6 +61,12 @@ export function getEnvChecks(): EnvCheck[] {
       key: "ZOHO_SMTP_PASS",
       label: "Zoho email app password",
       present: Boolean(process.env.ZOHO_SMTP_PASS),
+      requiredForProduction: false
+    },
+    {
+      key: "PHONE_LEAD_NOTIFICATION_EMAIL",
+      label: "Internal phone lead notification inbox",
+      present: Boolean(process.env.PHONE_LEAD_NOTIFICATION_EMAIL),
       requiredForProduction: false
     }
   ];

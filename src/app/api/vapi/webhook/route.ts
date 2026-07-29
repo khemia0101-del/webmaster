@@ -1,12 +1,6 @@
 import { NextResponse } from "next/server";
-import {
-  capturePhoneInquiry,
-  destinationForInboundCall,
-  NoTransferDestinationError,
-  recordCallEnd,
-  recordContractorLeadResponse,
-  recordTransferUpdate
-} from "@/lib/phone-operations";
+import { capturePhoneInquiry } from "@/lib/phone-operations";
+import { getStore } from "@/lib/store";
 import { buildInboundAssistant, vapiWebhookAuthorized } from "@/lib/vapi";
 
 export const runtime = "nodejs";
@@ -17,7 +11,12 @@ export const maxDuration = 30;
 type ToolCall = {
   id?: string;
   name?: string;
+  arguments?: Record<string, unknown> | string;
   parameters?: Record<string, unknown> | string;
+  function?: {
+    name?: string;
+    parameters?: Record<string, unknown> | string;
+  };
 };
 
 type VapiMessage = Record<string, unknown> & {
@@ -35,15 +34,21 @@ function toolCalls(message: VapiMessage) {
   const direct = Array.isArray(message.toolCallList) ? message.toolCallList : [];
   if (direct.length) return direct.slice(0, 5);
   return (Array.isArray(message.toolWithToolCallList) ? message.toolWithToolCallList : [])
-    .map((entry) => ({ ...entry.toolCall, name: entry.name || entry.toolCall?.name }))
+    .map((entry) => ({
+      ...entry.toolCall,
+      name:
+        entry.name ||
+        entry.toolCall?.name ||
+        entry.toolCall?.function?.name
+    }))
     .slice(0, 5);
 }
 
-function parameters(call: ToolCall) {
-  if (call.parameters && typeof call.parameters === "object") return call.parameters;
-  if (typeof call.parameters === "string") {
+function parseParameters(value: ToolCall["parameters"]) {
+  if (value && typeof value === "object") return value;
+  if (typeof value === "string") {
     try {
-      const parsed = JSON.parse(call.parameters) as unknown;
+      const parsed = JSON.parse(value) as unknown;
       if (parsed && typeof parsed === "object") return parsed as Record<string, unknown>;
     } catch {
       return {};
@@ -52,20 +57,27 @@ function parameters(call: ToolCall) {
   return {};
 }
 
+function parameters(call: ToolCall) {
+  return parseParameters(
+    call.arguments ??
+      call.parameters ??
+      call.function?.parameters
+  );
+}
+
 async function handleToolCalls(message: VapiMessage) {
   const results = [];
   for (const toolCall of toolCalls(message)) {
     const toolCallId = String(toolCall.id || "");
-    const name = String(toolCall.name || "");
+    const name = String(toolCall.name || toolCall.function?.name || "");
     try {
-      let value: unknown;
-      if (name === "save_phone_inquiry") {
-        value = await capturePhoneInquiry(message.call ?? {}, parameters(toolCall));
-      } else if (name === "record_contractor_lead_response") {
-        value = await recordContractorLeadResponse(message.call ?? {}, parameters(toolCall));
-      } else {
+      if (name !== "save_phone_inquiry") {
         throw new Error("Unsupported tool call.");
       }
+      const value = await capturePhoneInquiry(
+        message.call ?? {},
+        parameters(toolCall)
+      );
       results.push({ name, toolCallId, result: JSON.stringify(value) });
     } catch (error) {
       results.push({
@@ -95,26 +107,14 @@ export async function POST(request: Request) {
   }
 
   switch (message.type) {
-    case "assistant-request":
-      return NextResponse.json({ assistant: buildInboundAssistant(request.url) });
+    case "assistant-request": {
+      const store = await getStore();
+      return NextResponse.json({
+        assistant: buildInboundAssistant(request.url, store.contractors)
+      });
+    }
     case "tool-calls":
       return handleToolCalls(message);
-    case "transfer-destination-request":
-      try {
-        return NextResponse.json(await destinationForInboundCall(message.call ?? {}));
-      } catch (error) {
-        const detail =
-          error instanceof NoTransferDestinationError
-            ? error.message
-            : "The transfer destination could not be selected. The lead remains saved.";
-        return NextResponse.json({ error: detail });
-      }
-    case "transfer-update":
-      await recordTransferUpdate(message.call ?? {}, message);
-      return NextResponse.json({ received: true });
-    case "end-of-call-report":
-      await recordCallEnd(message.call ?? {}, message);
-      return NextResponse.json({ received: true });
     default:
       return NextResponse.json({ received: true });
   }

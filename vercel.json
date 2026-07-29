@@ -1,11 +1,5 @@
 {
   "framework": "nextjs",
   "buildCommand": "npm run build",
-  "outputDirectory": ".next-conquistador",
-  "crons": [
-    {
-      "path": "/api/cron/phone-followups",
-      "schedule": "*/15 * * * *"
-    }
-  ]
+  "outputDirectory": ".next-conquistador"
 }

@@ -54,14 +54,7 @@ export type PhoneRoutingStatus =
   | "logged_only"
   | "queued_coverage"
   | "queued_after_hours"
-  | "queued_follow_up"
-  | "configuration_required"
   | "transfer_ready"
-  | "transfer_attempted"
-  | "transferred"
-  | "follow_up_in_progress"
-  | "contractor_notified"
-  | "exhausted"
   | "failed";
 
 export type PhoneRoutingState = {
@@ -71,13 +64,8 @@ export type PhoneRoutingState = {
   consentToShare: boolean;
   status: PhoneRoutingStatus;
   candidateContractorIds: string[];
-  attemptedContractorIds: string[];
-  selectedContractorId?: string;
   nextAttemptAt?: string;
-  lastAttemptAt?: string;
-  vapiFollowUpCallId?: string;
   failureReason?: string;
-  completedCallLoggedAt?: string;
 };
 
 export type Customer = {
@@ -215,8 +203,6 @@ export type InteractionEventKind =
   | "phone_inquiry_logged"
   | "phone_routing_ready"
   | "phone_routing_queued"
-  | "phone_transfer_attempted"
-  | "phone_transfer_completed"
   | "approval_decided"
   | "contractor_interaction"
   | "system_error"

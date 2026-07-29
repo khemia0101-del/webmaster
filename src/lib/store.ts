@@ -4,18 +4,6 @@ import { promises as fs } from "fs";
 import path from "path";
 import { seedStore } from "@/data/seed";
 import { buildLeadArtifacts, classifyLead, isSafetyCritical, recommendationFor } from "@/lib/hermes";
-import {
-  applyDecision as sbApplyDecision,
-  findApproval as sbFindApproval,
-  findLeadByVapiCallId as sbFindLeadByVapiCallId,
-  insertActivity as sbInsertActivity,
-  insertEvent as sbInsertEvent,
-  insertLead as sbInsertLead,
-  readStore as sbReadStore,
-  supabaseConfigured,
-  updateContractor as sbUpdateContractor,
-  updateLead as sbUpdateLead
-} from "@/lib/supabase";
 import type {
   ApprovalRequest,
   HermesActivity,
@@ -56,7 +44,6 @@ async function writeLocalStore(store: Store) {
 }
 
 export async function getStore(): Promise<Store> {
-  if (supabaseConfigured()) return sbReadStore();
   return readLocalStore();
 }
 
@@ -71,10 +58,6 @@ export async function recordEvent(
     actor: partial.actor ?? partial.source,
     ...partial
   };
-  if (supabaseConfigured()) {
-    await sbInsertEvent(event);
-    return event;
-  }
   const store = await readLocalStore();
   store.events.unshift(event);
   await writeLocalStore(store);
@@ -176,11 +159,6 @@ export async function createLead(form: FormData, fallbackType: LeadType) {
     });
   }
 
-  if (supabaseConfigured()) {
-    await sbInsertLead(lead, artifacts.approvals, artifacts.activity, events);
-    return lead;
-  }
-
   const store = await readLocalStore();
   store.leads.unshift(lead);
   store.approvalRequests.unshift(...artifacts.approvals);
@@ -242,8 +220,7 @@ export async function createPhoneLead(input: PhoneLeadInput): Promise<Lead> {
     serviceType: input.serviceType,
     consentToShare: input.consentToShare,
     status: "collecting",
-    candidateContractorIds: [],
-    attemptedContractorIds: []
+    candidateContractorIds: []
   };
   const lead: Lead = {
     id: `lead-phone-${Date.now()}-${callSuffix}`,
@@ -290,17 +267,6 @@ export async function createPhoneLead(input: PhoneLeadInput): Promise<Lead> {
     }
   ];
 
-  if (supabaseConfigured()) {
-    try {
-      await sbInsertLead(lead, artifacts.approvals, artifacts.activity, events);
-    } catch (error) {
-      const duplicate = await sbFindLeadByVapiCallId(input.vapiCallId).catch(() => null);
-      if (duplicate) return duplicate;
-      throw error;
-    }
-    return lead;
-  }
-
   const store = await readLocalStore();
   store.leads.unshift(lead);
   store.approvalRequests.unshift(...artifacts.approvals);
@@ -312,7 +278,6 @@ export async function createPhoneLead(input: PhoneLeadInput): Promise<Lead> {
 
 export async function findLeadByVapiCallId(callId: string): Promise<Lead | null> {
   if (!callId) return null;
-  if (supabaseConfigured()) return sbFindLeadByVapiCallId(callId);
   const store = await getStore();
   return store.leads.find((lead) => lead.phoneRouting?.vapiCallId === callId) ?? null;
 }
@@ -323,13 +288,6 @@ export async function updateLeadWithAudit(
   activity: HermesActivity[] = [],
   events: InteractionEvent[] = []
 ) {
-  if (supabaseConfigured()) {
-    await sbUpdateLead(id, patch);
-    for (const item of activity) await sbInsertActivity(item);
-    for (const item of events) await sbInsertEvent(item);
-    return;
-  }
-
   const store = await readLocalStore();
   const lead = store.leads.find((item) => item.id === id);
   if (!lead) throw new Error(`Lead ${id} was not found.`);
@@ -337,32 +295,6 @@ export async function updateLeadWithAudit(
   store.hermesActivity.unshift(...activity);
   store.events.unshift(...events);
   await writeLocalStore(store);
-}
-
-export async function markContractorAssigned(contractorId: string, at = new Date()) {
-  const store = await getStore();
-  const contractor = store.contractors.find((item) => item.id === contractorId);
-  if (!contractor?.routingProfile) return;
-  const assignmentDate = at.toISOString().slice(0, 10);
-  const routingProfile = {
-    ...contractor.routingProfile,
-    lastAssignedAt: at.toISOString(),
-    assignmentsDate: assignmentDate,
-    assignmentsToday:
-      contractor.routingProfile.assignmentsDate === assignmentDate
-        ? (contractor.routingProfile.assignmentsToday ?? 0) + 1
-        : 1
-  };
-
-  if (supabaseConfigured()) {
-    await sbUpdateContractor(contractorId, { routingProfile });
-    return;
-  }
-  const local = await readLocalStore();
-  const localContractor = local.contractors.find((item) => item.id === contractorId);
-  if (!localContractor) return;
-  localContractor.routingProfile = routingProfile;
-  await writeLocalStore(local);
 }
 
 export async function updateLeadRevenueDeskState(
@@ -415,20 +347,6 @@ export async function decideApproval(
     riskLevel: approval.riskLevel,
     agreed: decision === "approved"
   });
-
-  if (supabaseConfigured()) {
-    const existing = await sbFindApproval(id);
-    if (!existing) return false;
-    const updated: ApprovalRequest = {
-      ...existing,
-      status: decision,
-      decidedAt: at,
-      decisionNote: note,
-      decidedBy
-    };
-    await sbApplyDecision(updated, buildAudit(updated), buildSignal(updated));
-    return true;
-  }
 
   const store = await readLocalStore();
   const approval = store.approvalRequests.find((a) => a.id === id);

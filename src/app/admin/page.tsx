@@ -104,7 +104,7 @@ export default async function AdminPage() {
       <Panel icon={<Gauge />} title="Production Readiness">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-[#5c6570]">
-            Lowest-cost deployment uses persistent local file storage, admin credentials, and a public site URL. Supabase and paid APIs are optional later upgrades.
+            Local JSON supports development and demos. Production phone leads are handed to the configured Revenue Desk webhook because Vercel files are temporary.
           </p>
           <Badge tone={productionReady ? "good" : "warn"}>{productionReady ? "Ready" : "Needs env setup"}</Badge>
         </div>
@@ -149,9 +149,9 @@ export default async function AdminPage() {
                   {lead.phoneRouting ? (
                     <Badge
                       tone={
-                        lead.phoneRouting.status === "transferred" || lead.phoneRouting.status === "contractor_notified"
+                        lead.phoneRouting.status === "transfer_ready"
                           ? "good"
-                          : lead.phoneRouting.status === "failed" || lead.phoneRouting.status === "exhausted"
+                          : lead.phoneRouting.status === "failed"
                             ? "bad"
                             : "warn"
                       }
