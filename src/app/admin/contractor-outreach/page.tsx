@@ -10,7 +10,7 @@ function configured(name: string) {
 
 export default function ContractorOutreachPage() {
   const checks = [
-    ["GOOGLE_PLACES_API_KEY", "Google Places contractor search"],
+    ["HERMES_REVENUE_DESK_WEBHOOK_URL", "Hermes contractor research"],
     ["VAPI_PRIVATE_KEY", "Vapi private key"],
     ["VAPI_OUTBOUND_PHONE_NUMBER_ID", "Vapi outbound phone number ID"],
     ["VAPI_OUTBOUND_WEBHOOK_SECRET", "Outbound webhook shared secret"],
@@ -28,7 +28,7 @@ export default function ContractorOutreachPage() {
         <p className="mt-6 text-sm font-bold uppercase tracking-wide text-[#b86a32]">Human-approved Vapi outreach</p>
         <h1 className="mt-2 text-4xl font-bold">Contractor qualification calls</h1>
         <p className="mt-3 max-w-3xl text-[#5c6570]">
-          Find local business candidates, verify one, then start a single Vapi qualification call. The virtual assistant asks permission, gathers contractor capabilities, records opt-outs, and sends only structured fields for human review.
+          Ask Hermes to research local business candidates or enter one manually, verify the prospect, then start a single Vapi qualification call. The virtual assistant asks permission, gathers contractor capabilities, records opt-outs, and sends only structured fields for human review.
         </p>
       </div>
 
@@ -57,7 +57,7 @@ export default function ContractorOutreachPage() {
       <section className="rounded-lg border border-[#d8c2a6] bg-white p-5 shadow-sm">
         <h2 className="text-xl font-bold">Start one outreach call</h2>
         <p className="mt-2 text-sm text-[#5c6570]">
-          Google Places supplies reviewable candidates; it never starts calls. Calls are restricted to 9:00 AM-5:00 PM weekdays in the prospect&apos;s timezone. This is a qualification tool, not an unattended mass dialer.
+          Hermes web research supplies sourced candidates but never starts calls. Calls are restricted to 9:00 AM-5:00 PM weekdays in the prospect&apos;s timezone. This is a qualification tool, not an unattended mass dialer.
         </p>
         <div className="mt-6">
           <ContractorOutreachForm />

@@ -1,113 +1,151 @@
 import "server-only";
 
+import { createHash } from "crypto";
 import {
   validateContractorSearch,
   type ContractorSearchInput
 } from "@/lib/contractor-discovery-policy";
+import { normalizeUsPhone } from "@/lib/vapi-outbound-policy";
 
-const GOOGLE_PLACES_TEXT_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText";
-const GOOGLE_PLACES_FIELD_MASK = [
-  "searchUri",
-  "places.id",
-  "places.displayName",
-  "places.formattedAddress",
-  "places.googleMapsUri",
-  "places.internationalPhoneNumber",
-  "places.nationalPhoneNumber",
-  "places.rating",
-  "places.userRatingCount",
-  "places.businessStatus"
-].join(",");
+type HermesCandidate = Record<string, unknown>;
 
-type GooglePlace = {
-  id?: string;
-  displayName?: { text?: string };
-  formattedAddress?: string;
-  googleMapsUri?: string;
-  internationalPhoneNumber?: string;
-  nationalPhoneNumber?: string;
-  rating?: number;
-  userRatingCount?: number;
-  businessStatus?: string;
-};
-
-type GoogleTextSearchResponse = {
-  places?: GooglePlace[];
-  searchUri?: string;
-  error?: { message?: string };
+type HermesContractorResearchReply = {
+  candidates?: HermesCandidate[];
+  data?: { candidates?: HermesCandidate[] };
+  result?: { candidates?: HermesCandidate[] };
 };
 
 export type ContractorCandidate = {
-  placeId: string;
+  researchId: string;
   company: string;
   phone: string;
-  address: string;
-  rating: number | null;
-  ratingCount: number;
-  googleMapsUri: string;
+  city: string;
+  serviceHint: string;
+  sourceUrl: string;
+  sourceLabel: string;
+  targetTimeZone: string;
 };
+
+function clean(value: unknown, maximum: number) {
+  return String(value ?? "")
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maximum);
+}
+
+function publicHttpsUrl(value: unknown) {
+  const candidate = clean(value, 500);
+  try {
+    const url = new URL(candidate);
+    return url.protocol === "https:" ? url.toString() : "";
+  } catch {
+    return "";
+  }
+}
+
+function candidateList(reply: HermesContractorResearchReply) {
+  if (Array.isArray(reply.candidates)) return reply.candidates;
+  if (Array.isArray(reply.data?.candidates)) return reply.data.candidates;
+  if (Array.isArray(reply.result?.candidates)) return reply.result.candidates;
+  return [];
+}
+
+function validatedCandidate(candidate: HermesCandidate): ContractorCandidate | null {
+  const company = clean(candidate.company ?? candidate.companyName ?? candidate.name, 120);
+  const phone = normalizeUsPhone(candidate.phone ?? candidate.businessPhone);
+  const sourceUrl = publicHttpsUrl(candidate.sourceUrl ?? candidate.sourceURL ?? candidate.url);
+  if (!company || !phone || !sourceUrl) return null;
+
+  const researchId = createHash("sha256")
+    .update(`${company}|${phone}|${sourceUrl}`)
+    .digest("hex")
+    .slice(0, 16);
+
+  return {
+    researchId,
+    company,
+    phone,
+    city: clean(candidate.city ?? candidate.location ?? candidate.address, 100),
+    serviceHint: clean(candidate.serviceHint ?? candidate.services ?? candidate.service, 180),
+    sourceUrl,
+    sourceLabel: clean(candidate.sourceLabel ?? candidate.sourceName, 80) || "Public web source",
+    targetTimeZone: clean(candidate.targetTimeZone ?? candidate.timeZone, 80)
+  };
+}
 
 export async function findContractorCandidates(input: ContractorSearchInput) {
   const validated = validateContractorSearch(input);
   if (!validated.ok) throw new Error(validated.error);
 
-  const apiKey = process.env.GOOGLE_PLACES_API_KEY?.trim();
-  if (!apiKey) throw new Error("GOOGLE_PLACES_API_KEY is not configured.");
+  const url = process.env.HERMES_REVENUE_DESK_WEBHOOK_URL?.trim();
+  if (!url) throw new Error("HERMES_REVENUE_DESK_WEBHOOK_URL is not configured.");
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15_000);
+  const timeout = setTimeout(() => controller.abort(), 20_000);
   let response: Response;
 
   try {
-    response = await fetch(GOOGLE_PLACES_TEXT_SEARCH_URL, {
+    response = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Goog-Api-Key": apiKey,
-        "X-Goog-FieldMask": GOOGLE_PLACES_FIELD_MASK
+        ...(process.env.HERMES_REVENUE_DESK_SECRET
+          ? { Authorization: `Bearer ${process.env.HERMES_REVENUE_DESK_SECRET}` }
+          : {})
       },
       body: JSON.stringify({
-        textQuery: `${validated.search.service} in ${validated.search.location}`,
-        languageCode: "en",
-        regionCode: "US",
-        minRating: validated.search.minimumRating,
-        pageSize: 10,
-        rankPreference: "RELEVANCE",
-        includePureServiceAreaBusinesses: true
+        targetAgent: "Conquistador Revenue Desk",
+        mode: "contractor_discovery",
+        humanRequired: true,
+        autoCallAllowed: false,
+        search: {
+          service: validated.search.service,
+          location: validated.search.location,
+          country: "US",
+          maximumCandidates: 8
+        },
+        requiredCandidateFields: [
+          "company",
+          "phone",
+          "city",
+          "serviceHint",
+          "sourceUrl",
+          "sourceLabel",
+          "targetTimeZone"
+        ],
+        guardrails: [
+          "Use web research only; do not place calls or contact anyone.",
+          "Return current public business contact information from a direct HTTPS source.",
+          "Never guess a company, phone number, source URL, line type, consent, license, or availability.",
+          "Return no more than eight candidates and no raw search pages, transcripts, or commentary.",
+          "A human operator must verify and approve every candidate before Vapi is called."
+        ]
       }),
-      cache: "no-store",
       signal: controller.signal
     });
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
-      throw new Error("Google Places contractor search timed out.");
+      throw new Error("Hermes contractor research timed out.");
     }
-    throw new Error("Google Places contractor search could not be reached.");
+    throw new Error("Hermes contractor research could not be reached.");
   } finally {
     clearTimeout(timeout);
   }
 
-  const body = (await response.json().catch(() => ({}))) as GoogleTextSearchResponse;
-  if (!response.ok) {
-    throw new Error(body.error?.message || `Google Places search failed with HTTP ${response.status}.`);
-  }
+  const reply = (await response.json().catch(() => ({}))) as HermesContractorResearchReply;
+  if (!response.ok) throw new Error(`Hermes contractor research returned HTTP ${response.status}.`);
 
-  const candidates: ContractorCandidate[] = (body.places ?? [])
-    .filter((place) => place.businessStatus !== "CLOSED_PERMANENTLY")
-    .map((place) => ({
-      placeId: String(place.id ?? "").trim(),
-      company: String(place.displayName?.text ?? "").trim(),
-      phone: String(place.internationalPhoneNumber ?? place.nationalPhoneNumber ?? "").trim(),
-      address: String(place.formattedAddress ?? "").trim(),
-      rating: typeof place.rating === "number" ? place.rating : null,
-      ratingCount: typeof place.userRatingCount === "number" ? place.userRatingCount : 0,
-      googleMapsUri: String(place.googleMapsUri ?? "").trim()
-    }))
-    .filter((place) => place.placeId && place.company && place.phone && place.googleMapsUri);
+  const seen = new Set<string>();
+  const candidates = candidateList(reply)
+    .map(validatedCandidate)
+    .filter((candidate): candidate is ContractorCandidate => Boolean(candidate))
+    .filter((candidate) => {
+      if (seen.has(candidate.phone)) return false;
+      seen.add(candidate.phone);
+      return true;
+    })
+    .slice(0, 8);
 
-  return {
-    candidates,
-    query: validated.search,
-    searchUri: String(body.searchUri ?? "").trim()
-  };
+  return { candidates, query: validated.search };
 }

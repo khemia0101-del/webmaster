@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     return Response.json({ ok: true, ...result });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Contractor search failed.";
-    const clientError = /enter|required|rating/i.test(message);
+    const clientError = /enter|required/i.test(message);
     return Response.json({ error: message }, { status: clientError ? 400 : 502 });
   }
 }

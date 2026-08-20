@@ -9,13 +9,14 @@ type SubmissionState =
   | { tone: "error"; message: string };
 
 type ContractorCandidate = {
-  placeId: string;
+  researchId: string;
   company: string;
   phone: string;
-  address: string;
-  rating: number | null;
-  ratingCount: number;
-  googleMapsUri: string;
+  city: string;
+  serviceHint: string;
+  sourceUrl: string;
+  sourceLabel: string;
+  targetTimeZone: string;
 };
 
 export function ContractorOutreachForm() {
@@ -23,14 +24,12 @@ export function ContractorOutreachForm() {
   const [state, setState] = useState<SubmissionState>({ tone: "idle", message: "" });
   const [searchState, setSearchState] = useState<SubmissionState>({ tone: "idle", message: "" });
   const [candidates, setCandidates] = useState<ContractorCandidate[]>([]);
-  const [searchUri, setSearchUri] = useState("");
 
   async function search(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
-    setSearchState({ tone: "working", message: "Searching current business listings..." });
+    setSearchState({ tone: "working", message: "Asking Hermes to research public business contacts..." });
     setCandidates([]);
-    setSearchUri("");
 
     try {
       const response = await fetch("/api/admin/contractor-search", {
@@ -38,25 +37,22 @@ export function ContractorOutreachForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           service: data.get("searchService"),
-          location: data.get("searchLocation"),
-          minimumRating: Number(data.get("minimumRating"))
+          location: data.get("searchLocation")
         })
       });
       const result = (await response.json()) as {
         error?: string;
         candidates?: ContractorCandidate[];
-        searchUri?: string;
       };
       if (!response.ok) throw new Error(result.error || "Contractor search failed.");
 
       const found = result.candidates ?? [];
       setCandidates(found);
-      setSearchUri(result.searchUri ?? "");
       setSearchState({
         tone: "success",
         message: found.length
-          ? `Found ${found.length} business ${found.length === 1 ? "candidate" : "candidates"} with published phone numbers.`
-          : "No matching businesses with published phone numbers were returned."
+          ? `Hermes returned ${found.length} sourced business ${found.length === 1 ? "candidate" : "candidates"}.`
+          : "Hermes returned no candidates with both a valid U.S. phone number and a verifiable source."
       });
     } catch (error) {
       setSearchState({
@@ -77,9 +73,10 @@ export function ContractorOutreachForm() {
 
     setValue("company", candidate.company);
     setValue("phone", candidate.phone);
-    setValue("city", candidate.address.slice(0, 100));
-    setValue("serviceHint", "Public business listing; capabilities not yet verified");
-    setValue("source", `Google Maps business listing (place ID ${candidate.placeId})`);
+    setValue("city", candidate.city);
+    setValue("serviceHint", candidate.serviceHint || "Hermes web result; capabilities not yet verified");
+    setValue("source", `Hermes web research: ${candidate.sourceUrl}`.slice(0, 240));
+    if (candidate.targetTimeZone) setValue("targetTimeZone", candidate.targetTimeZone);
     setValue("lineType", "unknown");
     setValue("consentBasis", "business_to_business");
 
@@ -144,10 +141,10 @@ export function ContractorOutreachForm() {
         <div>
           <h3 className="font-bold">Find business candidates</h3>
           <p className="mt-1 text-sm text-[#5c6570]">
-            Search Google Maps business listings. Results stay in this browser until you select one; selecting a listing never starts a call.
+            Hermes researches public web sources and returns only structured candidates with a source link. Selecting a result never starts a call.
           </p>
         </div>
-        <div className="grid gap-5 md:grid-cols-[1fr_1fr_10rem]">
+        <div className="grid gap-5 md:grid-cols-2">
           <label className="text-sm font-semibold">
             Contractor service
             <input className={fieldClass} name="searchService" required maxLength={100} placeholder="Oil burner repair" />
@@ -155,15 +152,6 @@ export function ContractorOutreachForm() {
           <label className="text-sm font-semibold">
             U.S. location
             <input className={fieldClass} name="searchLocation" required maxLength={120} placeholder="Lancaster, PA" />
-          </label>
-          <label className="text-sm font-semibold">
-            Minimum rating
-            <select className={fieldClass} name="minimumRating" defaultValue="4">
-              <option value="0">Any</option>
-              <option value="3.5">3.5+</option>
-              <option value="4">4.0+</option>
-              <option value="4.5">4.5+</option>
-            </select>
           </label>
         </div>
         <div className="flex flex-wrap items-center gap-4">
@@ -183,25 +171,16 @@ export function ContractorOutreachForm() {
 
         {candidates.length ? (
           <div className="grid gap-3 rounded-md border border-[#eadcc8] bg-white p-3">
-            <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
-              <span className="text-[#5e5e5e]" translate="no">Google Maps</span>
-              {searchUri ? (
-                <a className="font-bold text-[#0b2f4a] underline" href={searchUri} target="_blank" rel="noreferrer">
-                  Open this search on Google Maps
-                </a>
-              ) : null}
-            </div>
+            <p className="text-sm text-[#5c6570]">Hermes research results. Verify every source before authorizing a call.</p>
             {candidates.map((candidate) => (
-              <article className="grid gap-3 rounded-md border border-[#eadcc8] p-4 md:grid-cols-[1fr_auto] md:items-center" key={candidate.placeId}>
+              <article className="grid gap-3 rounded-md border border-[#eadcc8] p-4 md:grid-cols-[1fr_auto] md:items-center" key={candidate.researchId}>
                 <div>
                   <h4 className="font-bold">{candidate.company}</h4>
-                  <p className="mt-1 text-sm text-[#5c6570]">{candidate.address || "Service-area business"}</p>
-                  <p className="mt-1 text-sm text-[#263544]">
-                    {candidate.phone}
-                    {candidate.rating !== null ? ` · ${candidate.rating.toFixed(1)} rating (${candidate.ratingCount})` : ""}
-                  </p>
-                  <a className="mt-2 inline-block text-sm font-bold text-[#0b2f4a] underline" href={candidate.googleMapsUri} target="_blank" rel="noreferrer">
-                    Verify listing on Google Maps
+                  <p className="mt-1 text-sm text-[#5c6570]">{candidate.city || "Location not returned"}</p>
+                  <p className="mt-1 text-sm text-[#263544]">{candidate.phone}</p>
+                  {candidate.serviceHint ? <p className="mt-1 text-sm text-[#5c6570]">{candidate.serviceHint}</p> : null}
+                  <a className="mt-2 inline-block text-sm font-bold text-[#0b2f4a] underline" href={candidate.sourceUrl} target="_blank" rel="noreferrer">
+                    Verify {candidate.sourceLabel}
                   </a>
                 </div>
                 <button

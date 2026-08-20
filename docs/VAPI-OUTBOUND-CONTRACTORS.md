@@ -1,8 +1,8 @@
 # Vapi outbound contractor qualification
 
-This feature lets an authenticated operator find contractor candidates and call one prospect at a time from `/admin/contractor-outreach`. Google Places returns current public business listings for review. Vapi runs a short English qualification conversation and returns structured fields to the app. Every interested contractor remains in human vetting.
+This feature lets an authenticated operator ask Hermes for sourced contractor research or enter a prospect manually, then call one approved prospect at a time from `/admin/contractor-outreach`. Vapi runs a short English qualification conversation and returns structured fields to the app. Every interested contractor remains in human vetting.
 
-Vapi places calls; it does not discover phone numbers. The app uses Google Places API (New) for optional discovery, or the operator can enter a prospect from a documented application, referral, existing relationship, or another legitimate source.
+Vapi places calls; it does not discover phone numbers. For discovery, the app sends Hermes only the requested service, location, country, result limit, output schema, and guardrails. It does not attach raw lead data, chat history, or prior research. The operator can instead enter a prospect from a documented application, referral, existing relationship, or another legitimate source.
 
 ## Production environment
 
@@ -11,7 +11,6 @@ NEXT_PUBLIC_SITE_URL=https://YOUR_PRODUCTION_DOMAIN
 ADMIN_USERNAME=YOUR_ADMIN_USERNAME
 ADMIN_PASSWORD=YOUR_ADMIN_PASSWORD
 
-GOOGLE_PLACES_API_KEY=YOUR_SERVER_SIDE_GOOGLE_PLACES_API_KEY
 VAPI_PRIVATE_KEY=YOUR_VAPI_PRIVATE_KEY
 VAPI_OUTBOUND_PHONE_NUMBER_ID=YOUR_VAPI_PHONE_NUMBER_ID
 VAPI_OUTBOUND_WEBHOOK_SECRET=YOUR_RANDOM_64_CHARACTER_SHARED_SECRET
@@ -38,16 +37,36 @@ HERMES_REVENUE_DESK_SECRET=
 
 `VAPI_OUTBOUND_WEBHOOK_SECRET` is a random secret you create. It is not either Vapi API key. The app includes it in the transient assistant's `X-Vapi-Outbound-Secret` header so `/api/vapi/outbound/webhook` can authenticate Vapi tool calls.
 
-`GOOGLE_PLACES_API_KEY` is a server-side Google Cloud key with Places API (New) enabled. Restrict it to the Places API and to the production deployment where possible. It is never sent to the browser. Search results are requested with a narrow field mask and `cache: no-store` to limit returned data, cost, and caching.
+## Hermes research contract
+
+For `mode: "contractor_discovery"`, the configured Hermes webhook should return JSON in this shape:
+
+```json
+{
+  "candidates": [
+    {
+      "company": "Example HVAC LLC",
+      "phone": "+17175550100",
+      "city": "Lancaster, PA",
+      "serviceHint": "Oil burner and HVAC service",
+      "sourceUrl": "https://example.com/contact",
+      "sourceLabel": "Company contact page",
+      "targetTimeZone": "America/New_York"
+    }
+  ]
+}
+```
+
+The app also accepts the same array under `data.candidates` or `result.candidates`. It normalizes U.S. phone numbers, requires an HTTPS source, removes duplicate numbers, and caps the response at eight candidates. It does not accept line type, consent, licensing, availability, or approval claims from research; the operator must verify those separately.
 
 ## Flow
 
 1. An authenticated operator opens `/admin/contractor-outreach`.
-2. The operator searches by service and U.S. location. The server calls Google Places Text Search (New), requesting at most ten currently listed candidates with published phone numbers.
-3. Results remain ephemeral in the browser. The operator opens the Google Maps listing, chooses one candidate, and independently verifies its line type, timezone, contact basis, and suppression status. Selecting a result only fills the form; it never calls automatically.
+2. The operator searches by service and U.S. location. The server asks the configured Hermes Revenue Desk webhook for no more than eight structured candidates. Hermes is instructed to use public web research, include a direct HTTPS source, never guess missing fields, and never contact anyone.
+3. The server discards candidates without a company, valid U.S. phone number, and source URL. Results remain ephemeral in the browser. The operator opens the source, chooses one candidate, and independently verifies its line type, timezone, contact basis, and suppression status. Selecting a result only fills the form; it never calls automatically.
 4. The operator can also enter a prospect from a different documented source.
 5. The server rejects invalid U.S. numbers, calls outside 9:00 AM-5:00 PM weekdays in the prospect timezone, repeat calls queued in the last 24 hours, and stored do-not-call numbers.
-6. Mobile and unknown lines are rejected unless the operator documents written consent for an AI-voice call. Google Places does not establish whether a published number is a landline or mobile number.
+6. Mobile and unknown lines are rejected unless the operator documents written consent for an AI-voice call. Hermes is not permitted to infer a line type or consent basis.
 7. The app creates a contractor prospect record and calls Vapi's `POST /call` endpoint with a transient assistant.
 8. The assistant identifies itself and Conquistador Oil, explains the purpose, and asks permission to continue.
 9. The assistant records one disposition and confirmed business fields through `save_contractor_outreach`.
@@ -69,19 +88,18 @@ No recording, transcript, full message history, raw Vapi artifact, payment infor
 ## Operational limits
 
 - There is no batch endpoint, campaign auto-start, cron, or automatic redial.
-- Discovery uses Google's supported Places API; the system does not scrape Google Maps pages or buy prospect data.
+- Hermes receives a compact research request and must return structured candidates with direct sources. No raw search page, lead history, transcript, or commentary is forwarded into later Hermes context.
 - Every call requires an authenticated operator action and an explicit compliance confirmation.
 - The local `/tmp` file store is best-effort on Vercel. Compact call metadata lets the result webhook recover and deliver a record across instances, but do-not-call suppression and idempotency are not durable across deployments or cold instances. This is another reason campaigns, automatic retries, and unattended calling remain disabled until a durable non-Supabase store is chosen.
-- Google Places content is displayed with Google Maps attribution and direct listing links. Before enabling Places in production, ensure the site's public terms and privacy policy meet Google's current requirements and review Google's caching restrictions.
 - This code provides conservative product safeguards, not legal advice. Review federal and applicable state calling rules with counsel before production outreach.
 
-The FTC says most genuine business-to-business solicitation calls are exempt from the Telemarketing Sales Rule's consumer provisions, while prohibitions on deceptive B2B calls still apply. The FCC has confirmed that AI-generated voices fall within the TCPA's artificial/prerecorded voice rules. See the [FTC TSR compliance guide](https://www.ftc.gov/business-guidance/resources/complying-telemarketing-sales-rule) and [FCC AI voice declaratory ruling](https://docs.fcc.gov/public/attachments/FCC-24-17A1.pdf). Google documents the current [Text Search (New) request](https://developers.google.com/maps/documentation/places/web-service/text-search) and [Places API policy and attribution requirements](https://developers.google.com/maps/documentation/places/web-service/policies).
+The FTC says most genuine business-to-business solicitation calls are exempt from the Telemarketing Sales Rule's consumer provisions, while prohibitions on deceptive B2B calls still apply. The FCC has confirmed that AI-generated voices fall within the TCPA's artificial/prerecorded voice rules. See the [FTC TSR compliance guide](https://www.ftc.gov/business-guidance/resources/complying-telemarketing-sales-rule) and [FCC AI voice declaratory ruling](https://docs.fcc.gov/public/attachments/FCC-24-17A1.pdf).
 
 ## Smoke test
 
 1. Use a company-controlled test number with written consent.
 2. Confirm the admin page reports all six runtime values configured.
-3. Search for a contractor category and confirm results include visible Google Maps attribution and direct listing links.
+3. Search for a contractor category and confirm Hermes returns structured candidates with direct source links and no raw research dump.
 4. Select a result and confirm no call starts until the operator completes and submits the authorization form.
 5. Start one controlled test during the allowed timezone window.
 6. Confirm Vapi returns a call ID and the prospect status becomes `outreach_call_queued`.

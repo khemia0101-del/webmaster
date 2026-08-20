@@ -52,12 +52,6 @@ export function getEnvChecks(): EnvCheck[] {
       requiredForProduction: false
     },
     {
-      key: "GOOGLE_PLACES_API_KEY",
-      label: "Google Places contractor search",
-      present: Boolean(process.env.GOOGLE_PLACES_API_KEY),
-      requiredForProduction: false
-    },
-    {
       key: "VAPI_PRIVATE_KEY",
       label: "Vapi private key for outbound calls",
       present: Boolean(process.env.VAPI_PRIVATE_KEY),
