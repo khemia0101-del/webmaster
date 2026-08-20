@@ -50,6 +50,30 @@ export function getEnvChecks(): EnvCheck[] {
       label: "Zoho email app password",
       present: Boolean(process.env.ZOHO_SMTP_PASS),
       requiredForProduction: false
+    },
+    {
+      key: "GOOGLE_PLACES_API_KEY",
+      label: "Google Places contractor search",
+      present: Boolean(process.env.GOOGLE_PLACES_API_KEY),
+      requiredForProduction: false
+    },
+    {
+      key: "VAPI_PRIVATE_KEY",
+      label: "Vapi private key for outbound calls",
+      present: Boolean(process.env.VAPI_PRIVATE_KEY),
+      requiredForProduction: false
+    },
+    {
+      key: "VAPI_OUTBOUND_PHONE_NUMBER_ID",
+      label: "Vapi outbound phone number",
+      present: Boolean(process.env.VAPI_OUTBOUND_PHONE_NUMBER_ID),
+      requiredForProduction: false
+    },
+    {
+      key: "VAPI_OUTBOUND_WEBHOOK_SECRET",
+      label: "Vapi outbound webhook secret",
+      present: Boolean(process.env.VAPI_OUTBOUND_WEBHOOK_SECRET),
+      requiredForProduction: false
     }
   ];
 }

@@ -9,6 +9,7 @@
     "dev": "node scripts/next-dev.mjs",
     "build": "node scripts/next-build.mjs",
     "start": "next start",
+    "test": "tsx --test src/lib/vapi-outbound-policy.test.ts src/lib/contractor-discovery-policy.test.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.check.json"
   },
@@ -33,6 +34,7 @@
     "eslint-config-next": "^16.2.6",
     "postcss": "^8.5.10",
     "tailwindcss": "^3.4.17",
+    "tsx": "^4.20.6",
     "typescript": "^5.9.3"
   }
 }

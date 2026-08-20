@@ -109,6 +109,9 @@ export default async function AdminPage() {
           <Badge tone={productionReady ? "good" : "warn"}>{productionReady ? "Ready" : "Needs env setup"}</Badge>
         </div>
         <div className="mt-4 flex flex-wrap gap-3">
+          <a className="rounded-md bg-[#b86a32] px-4 py-2 text-sm font-semibold text-white" href="/admin/contractor-outreach">
+            Contractor Outreach
+          </a>
           <a className="rounded-md bg-[#0b2f4a] px-4 py-2 text-sm font-semibold text-white" href="/api/export/leads">
             Export Leads CSV
           </a>

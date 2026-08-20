@@ -16,9 +16,9 @@ import {
 } from "@/lib/supabase";
 import type { ApprovalRequest, HermesActivity, InteractionEvent, Lead, LeadType, Store } from "@/lib/types";
 
-const dataDir =
-  process.env.DATA_DIR ||
-  (process.env.VERCEL ? path.join("/tmp", "conquistador-data") : path.join(process.cwd(), ".data"));
+const dataDir = process.env.VERCEL
+  ? path.join("/tmp", "conquistador-data")
+  : process.env.DATA_DIR || path.join(process.cwd(), ".data");
 const runtimePath = path.join(dataDir, "conquistador-store.json");
 
 const uid = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -180,29 +180,35 @@ export async function createLead(form: FormData, fallbackType: LeadType) {
   return lead;
 }
 
+export async function updateLeadWithAudit(
+  id: string,
+  patch: Partial<Lead>,
+  activity: HermesActivity[] = [],
+  events: InteractionEvent[] = []
+) {
+  if (supabaseConfigured()) {
+    await sbUpdateLead(id, patch);
+    for (const item of activity) await sbInsertActivity(item);
+    for (const item of events) await sbInsertEvent(item);
+    return;
+  }
+
+  const store = await readLocalStore();
+  const lead = store.leads.find((item) => item.id === id);
+  if (!lead) throw new Error(`Lead ${id} was not found.`);
+  Object.assign(lead, patch);
+  store.hermesActivity.unshift(...activity);
+  store.events.unshift(...events);
+  await writeLocalStore(store);
+}
+
 export async function updateLeadRevenueDeskState(
   id: string,
   patch: Pick<Partial<Lead>, "status" | "hermesDeliveryStatus" | "hermesReplyText" | "outboundEmailStatus" | "lastFollowUpAt">,
   activity: HermesActivity[] = [],
   events: InteractionEvent[] = []
 ) {
-  if (supabaseConfigured()) {
-    await sbUpdateLead(id, patch);
-    for (const item of activity) {
-      await sbInsertActivity(item);
-    }
-    for (const item of events) {
-      await sbInsertEvent(item);
-    }
-    return;
-  }
-
-  const store = await readLocalStore();
-  const lead = store.leads.find((item) => item.id === id);
-  if (lead) Object.assign(lead, patch);
-  store.hermesActivity.unshift(...activity);
-  store.events.unshift(...events);
-  await writeLocalStore(store);
+  await updateLeadWithAudit(id, patch, activity, events);
 }
 
 /**

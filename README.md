@@ -9,6 +9,7 @@ Live site: https://webmaster-mocha.vercel.app/
 - Promotes heating oil delivery, HVAC service requests, emergency heating intake, commercial fuel delivery, and commercial account review.
 - Captures website form leads and chat inquiries through the existing intake system.
 - Routes leads toward the Conquistador Revenue Desk / Hermes workflow when configured.
+- Finds contractor candidates through current Google Maps business listings, then provides human-approved Vapi qualification calls without recordings or transcripts.
 - Includes local SEO content, service-area pages, structured data, sitemap, robots rules, and high-intent landing pages.
 - Includes a careers page for CDL fuel delivery drivers and licensed, experienced HVAC technicians.
 
@@ -90,7 +91,15 @@ ZOHO_SMTP_USER=info@conquistadoroil.com
 ZOHO_SMTP_PASS=
 ZOHO_FROM_EMAIL=info@conquistadoroil.com
 ZOHO_FROM_NAME=Conquistador Oil
+
+GOOGLE_PLACES_API_KEY=
+VAPI_PRIVATE_KEY=
+VAPI_OUTBOUND_PHONE_NUMBER_ID=
+VAPI_OUTBOUND_WEBHOOK_SECRET=
+CONTRACTOR_OUTREACH_NOTIFICATION_EMAIL=info@conquistadoroil.com
 ```
+
+Outbound contractor discovery and qualification is documented in [`docs/VAPI-OUTBOUND-CONTRACTORS.md`](docs/VAPI-OUTBOUND-CONTRACTORS.md). It is a separate, one-prospect-at-a-time workflow: an authenticated operator searches Google Maps business listings or supplies a contractor, verifies the source and contact basis, then starts one Vapi call from `/admin/contractor-outreach`. It does not scrape pages or run an unattended dialer.
 
 ## Lead Flow
 
