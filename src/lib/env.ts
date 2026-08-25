@@ -62,6 +62,24 @@ export function getEnvChecks(): EnvCheck[] {
       label: "Internal phone lead notification inbox",
       present: Boolean(process.env.PHONE_LEAD_NOTIFICATION_EMAIL),
       requiredForProduction: false
+    },
+    {
+      key: "VAPI_PRIVATE_KEY",
+      label: "Vapi private key for outbound calls",
+      present: Boolean(process.env.VAPI_PRIVATE_KEY),
+      requiredForProduction: false
+    },
+    {
+      key: "VAPI_OUTBOUND_PHONE_NUMBER_ID",
+      label: "Vapi outbound phone number",
+      present: Boolean(process.env.VAPI_OUTBOUND_PHONE_NUMBER_ID),
+      requiredForProduction: false
+    },
+    {
+      key: "VAPI_OUTBOUND_WEBHOOK_SECRET",
+      label: "Vapi outbound webhook secret",
+      present: Boolean(process.env.VAPI_OUTBOUND_WEBHOOK_SECRET),
+      requiredForProduction: false
     }
   ];
 }

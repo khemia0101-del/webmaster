@@ -29,6 +29,7 @@ function adminAuthOk(request: NextRequest) {
 export function middleware(request: NextRequest) {
   if (
     request.nextUrl.pathname.startsWith("/admin") ||
+    request.nextUrl.pathname.startsWith("/api/admin") ||
     request.nextUrl.pathname.startsWith("/api/approvals") ||
     request.nextUrl.pathname.startsWith("/api/export")
   ) {
@@ -63,5 +64,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/admin/:path*", "/api/approvals/:path*", "/api/export/:path*"]
+  matcher: ["/", "/admin/:path*", "/api/admin/:path*", "/api/approvals/:path*", "/api/export/:path*"]
 };
