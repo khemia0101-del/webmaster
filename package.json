@@ -2,6 +2,9 @@
   "name": "conquistador-oil-mvp",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "overrides": {
     "postcss": "$postcss"
   },
@@ -11,26 +14,30 @@
     "start": "next start",
     "test": "tsx --test src/lib/phone-routing.test.ts src/lib/vapi-outbound-policy.test.ts src/lib/contractor-discovery-policy.test.ts",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit -p tsconfig.check.json"
+    "typecheck": "tsc --noEmit -p tsconfig.check.json",
+    "db:import": "tsx scripts/import-supabase-store.ts",
+    "db:lint": "supabase db lint --linked",
+    "db:push": "supabase db push --linked"
   },
   "dependencies": {
+    "@supabase/supabase-js": "2.112.4",
     "clsx": "^2.1.1",
     "framer-motion": "^12.42.2",
     "lucide-react": "^0.556.0",
-    "next": "^16.2.6",
+    "next": "^16.3.2",
     "nodemailer": "^9.0.1",
     "react": "^19.2.3",
     "react-dom": "^19.2.3"
   },
   "devDependencies": {
-    "@next/swc-wasm-nodejs": "^16.2.6",
+    "@next/swc-wasm-nodejs": "^16.3.2",
     "@types/node": "^25.0.1",
     "@types/nodemailer": "^8.0.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "autoprefixer": "^10.4.20",
     "eslint": "^9.39.1",
-    "eslint-config-next": "^16.2.6",
+    "eslint-config-next": "^16.3.2",
     "postcss": "^8.5.10",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.20.6",

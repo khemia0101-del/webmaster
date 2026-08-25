@@ -64,15 +64,17 @@ the controlled transient assistant.
 
 The public website number remains unchanged until the Vapi number is ready.
 
-## Lead durability without a database
+## Lead durability
 
-Vercel function files are temporary. The local JSON store is therefore only for
-development and best-effort admin visibility.
+Production phone leads are committed to Supabase before notification delivery.
+The database transaction stores the compact lead, generated approvals, activity,
+and interaction events together. Vapi call IDs have a unique database index, so
+retries across separate Vercel instances resolve to the same lead. Local JSON is
+used only in development when Supabase credentials are absent.
 
-For production phone calls, the durable no-database record is the email sent to
+After the CRM commit, the app sends an operational notification to
 `PHONE_LEAD_NOTIFICATION_EMAIL`. If `HERMES_REVENUE_DESK_WEBHOOK_URL` is also
-configured, it receives the same compact lead. The phone tool reports success
-after at least one of those handoffs succeeds. The payload contains:
+configured, it receives the same compact lead. The payload contains:
 
 - caller name and callback details;
 - inquiry category and requested service;
@@ -85,16 +87,17 @@ It does not contain a transcript, recording URL, complete message history, or
 raw Vapi artifact.
 
 Vapi retries are idempotent by call ID. The app reuses a deterministic lead ID,
-coalesces concurrent retries in one runtime, and returns a completed handoff's
-stored tool result instead of sending the emails and webhook again. The stable
-lead ID is also the downstream idempotency key when separate serverless
-instances receive the same retry.
+coalesces concurrent retries in one runtime, and uses the Supabase uniqueness
+constraint plus a five-minute processing lease across runtimes. Only the lease
+holder sends notifications or offers a transfer. A concurrent retry reports the
+already-saved inquiry as processing, while a completed handoff's stored tool
+result is returned instead of sending the emails and webhook again.
 
 There is intentionally no Vercel cron or delayed queue. Outside contractor
 hours, the lead inbox receives the inquiry immediately for follow-up. A hosted
 Hermes endpoint can over-watch the same event later. Automatic delayed
-contractor calls should be added only after the contractor system has a real
-durable datastore or queue.
+contractor calls still require a separately designed durable queue with retry,
+lease, and dead-letter semantics.
 
 ## Contractor routing data
 
@@ -139,11 +142,12 @@ are returned for a live transfer attempt.
 
 ## Production smoke test
 
-1. Confirm the internal Zoho inbox receives one compact test lead.
-2. Call the Vapi number and complete a non-service inquiry.
-3. Confirm the assistant invokes `save_phone_inquiry` once.
-4. Confirm the inbox receives the fields but no transcript or recording.
-5. Add three test contractors matching one trade and zone.
-6. During their working hours, confirm an eligible service call can transfer.
-7. Outside their working hours, confirm the inbox receives
+1. Confirm `/api/readiness` reports a connected Supabase database.
+2. Confirm the internal Zoho inbox receives one compact test lead.
+3. Call the Vapi number and complete a non-service inquiry.
+4. Confirm the assistant invokes `save_phone_inquiry` once.
+5. Confirm the CRM and inbox contain the fields but no transcript or recording.
+6. Add three test contractors matching one trade and zone.
+7. During their working hours, confirm an eligible service call can transfer.
+8. Outside their working hours, confirm the inbox receives
    `queued_after_hours` and no transfer is attempted.

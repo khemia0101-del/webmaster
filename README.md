@@ -36,6 +36,7 @@ Live site: https://webmaster-mocha.vercel.app/
 - TypeScript
 - Tailwind CSS
 - Vercel deployment
+- Supabase Postgres and Storage for the durable CRM system of record
 - Optional Hermes Revenue Desk webhook
 - CelinaAmenBot closed-loop learning and action queue
 - Optional Zoho SMTP outbound email
@@ -77,6 +78,8 @@ Copy `.env.example` and fill production values as needed.
 
 ```env
 NEXT_PUBLIC_SITE_URL=https://YOUR_PRODUCTION_DOMAIN
+SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+SUPABASE_SECRET_KEY=YOUR_SERVER_ONLY_SUPABASE_SECRET
 ADMIN_USERNAME=YOUR_ADMIN_USERNAME
 ADMIN_PASSWORD=YOUR_LONG_RANDOM_PASSWORD
 
@@ -104,14 +107,14 @@ CONTRACTOR_OUTREACH_NOTIFICATION_EMAIL=info@conquistadoroil.com
 `PHONE_ROUTING_MIN_CONTRACTORS=3` are built-in defaults, so they do not need to
 be added to Vercel unless you want to override them.
 
-Vapi phone routing variables and connection steps are documented in [`docs/VAPI-INBOUND-SETUP.md`](docs/VAPI-INBOUND-SETUP.md). Production phone leads are sent immediately to the internal Zoho inbox and, when configured, the optional Hermes Revenue Desk webhook. There is no database-backed cron queue.
+Supabase CRM setup, migrations, imports, security, and recovery are documented in [`docs/SUPABASE-CRM.md`](docs/SUPABASE-CRM.md). Vapi phone routing variables and connection steps are documented in [`docs/VAPI-INBOUND-SETUP.md`](docs/VAPI-INBOUND-SETUP.md). Production phone leads are committed to Supabase before notification delivery, then sent to the internal Zoho inbox and, when configured, the optional Hermes Revenue Desk webhook. There is no automatic delayed-call queue.
 
 Outbound contractor discovery and qualification is documented in [`docs/VAPI-OUTBOUND-CONTRACTORS.md`](docs/VAPI-OUTBOUND-CONTRACTORS.md). It is a separate, one-prospect-at-a-time workflow: an authenticated operator asks Hermes for sourced web research or supplies a contractor manually, verifies the source and contact basis, then starts one Vapi call from `/admin/contractor-outreach`. It does not run an unattended dialer.
 
 ## Lead Flow
 
 1. A visitor submits a form or chat inquiry.
-2. The site saves the inquiry as a lead.
+2. The site atomically saves the lead, approvals, activity, and interaction events in Supabase.
 3. If Revenue Desk webhook settings are present, the lead is handed off to the Conquistador Revenue Desk.
 4. If Zoho SMTP settings are present, outbound email replies can be sent from `info@conquistadoroil.com`.
 5. Emergency / no-heat leads use conservative language and direct customers to call `(717) 397-9800`.
@@ -171,7 +174,10 @@ The placeholder service images are branded illustrations, not claimed real field
 ## Admin and Data Notes
 
 - `/admin` and protected API routes use Basic Auth when `ADMIN_USERNAME` and `ADMIN_PASSWORD` are configured.
-- Local JSON supports development and demos; `DATA_DIR` may override its local path. Do not set `DATA_DIR` on Vercel because deployed files are temporary and are not the durable record for production phone leads.
+- Supabase is mandatory in production. The app fails closed instead of writing customer data to Vercel's temporary filesystem when credentials are missing or incomplete.
+- Local JSON remains an explicit development-only fallback when neither Supabase variable is set; `DATA_DIR` may override its local path.
+- The server secret is never exposed to browser code. Anonymous and authenticated Data API roles have no CRM table or write-function privileges, and every exposed CRM table has RLS enabled.
+- `/api/readiness` verifies both required environment variables and a live Supabase query. `/api/health` remains a lightweight liveness endpoint.
 - `/api/export/leads` and `/api/export/store` provide authenticated backup/export paths.
 
 ## Safety Notes

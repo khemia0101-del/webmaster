@@ -7,6 +7,7 @@ import {
 } from "@/lib/phone-routing";
 import { routeLeadToRevenueDesk } from "@/lib/revenue-desk";
 import {
+  claimPhoneHandoff,
   createPhoneLead,
   findLeadByVapiCallId,
   getStore,
@@ -121,7 +122,7 @@ async function capturePhoneInquiryOnce(
     return existingLead.phoneRouting.handoffResult;
   }
 
-  const lead = existingLead ?? await createPhoneLead({
+  let lead = existingLead ?? await createPhoneLead({
     vapiCallId: callId,
     inquiryKind: kind,
     callerName: text(parameters.callerName, 100) || "Phone caller",
@@ -137,6 +138,23 @@ async function capturePhoneInquiryOnce(
     urgency: text(parameters.urgency, 80) || undefined,
     consentToShare
   });
+
+  const claimToken = uid("handoff");
+  const claimedLead = await claimPhoneHandoff(lead, claimToken);
+  if (!claimedLead) {
+    const currentLead = await findLeadByVapiCallId(callId);
+    if (currentLead?.phoneRouting?.handoffResult) return currentLead.phoneRouting.handoffResult;
+
+    return {
+      saved: true,
+      leadId: lead.id,
+      routingStatus: lead.phoneRouting?.status ?? "collecting",
+      action: "follow_up",
+      transferDestinations: [],
+      message: "The inquiry is saved and is already being processed by the Revenue Desk."
+    };
+  }
+  lead = claimedLead;
 
   let phoneRouting: PhoneRoutingState;
   let event: InteractionEvent;

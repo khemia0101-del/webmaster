@@ -5,6 +5,17 @@ import { promises as fs } from "fs";
 import path from "path";
 import { seedStore } from "@/data/seed";
 import { buildLeadArtifacts, classifyLead, isSafetyCritical, recommendationFor } from "@/lib/hermes";
+import {
+  appendSupabaseEvent,
+  claimSupabaseContractorOutreach,
+  claimSupabasePhoneHandoff,
+  decideSupabaseApproval,
+  findSupabaseLeadByVapiCallId,
+  persistSupabaseLeadBundle,
+  readSupabaseStore,
+  shouldUseSupabase,
+  updateSupabaseLeadWithAudit
+} from "@/lib/supabase-store";
 import type {
   ApprovalRequest,
   HermesActivity,
@@ -45,7 +56,7 @@ async function writeLocalStore(store: Store) {
 }
 
 export async function getStore(): Promise<Store> {
-  return readLocalStore();
+  return shouldUseSupabase() ? readSupabaseStore() : readLocalStore();
 }
 
 /** Append a single interaction/failure signal (used for error capture etc.). */
@@ -59,6 +70,11 @@ export async function recordEvent(
     actor: partial.actor ?? partial.source,
     ...partial
   };
+  if (shouldUseSupabase()) {
+    await appendSupabaseEvent(event);
+    return event;
+  }
+
   const store = await readLocalStore();
   store.events.unshift(event);
   await writeLocalStore(store);
@@ -158,6 +174,10 @@ export async function createLead(form: FormData, fallbackType: LeadType) {
         conversion: "form_submitted"
       }
     });
+  }
+
+  if (shouldUseSupabase()) {
+    return persistSupabaseLeadBundle(lead, artifacts.approvals, artifacts.activity, events);
   }
 
   const store = await readLocalStore();
@@ -271,6 +291,10 @@ export async function createPhoneLead(input: PhoneLeadInput): Promise<Lead> {
     }
   ];
 
+  if (shouldUseSupabase()) {
+    return persistSupabaseLeadBundle(lead, artifacts.approvals, artifacts.activity, events);
+  }
+
   const store = await readLocalStore();
   store.leads.unshift(lead);
   store.approvalRequests.unshift(...artifacts.approvals);
@@ -282,8 +306,23 @@ export async function createPhoneLead(input: PhoneLeadInput): Promise<Lead> {
 
 export async function findLeadByVapiCallId(callId: string): Promise<Lead | null> {
   if (!callId) return null;
+  if (shouldUseSupabase()) return findSupabaseLeadByVapiCallId(callId);
   const store = await getStore();
   return store.leads.find((lead) => lead.phoneRouting?.vapiCallId === callId) ?? null;
+}
+
+export async function claimPhoneHandoff(lead: Lead, token: string): Promise<Lead | null> {
+  if (!shouldUseSupabase()) return lead;
+  return claimSupabasePhoneHandoff(lead.id, token);
+}
+
+export async function claimContractorOutreach(
+  lead: Lead,
+  callId: string,
+  token: string
+): Promise<Lead | null> {
+  if (!shouldUseSupabase()) return lead;
+  return claimSupabaseContractorOutreach(lead.id, callId, token);
 }
 
 export async function updateLeadWithAudit(
@@ -292,6 +331,11 @@ export async function updateLeadWithAudit(
   activity: HermesActivity[] = [],
   events: InteractionEvent[] = []
 ) {
+  if (shouldUseSupabase()) {
+    await updateSupabaseLeadWithAudit(id, patch, activity, events);
+    return;
+  }
+
   const store = await readLocalStore();
   const lead = store.leads.find((item) => item.id === id);
   if (!lead) throw new Error(`Lead ${id} was not found.`);
@@ -352,7 +396,7 @@ export async function decideApproval(
     agreed: decision === "approved"
   });
 
-  const store = await readLocalStore();
+  const store = shouldUseSupabase() ? await readSupabaseStore() : await readLocalStore();
   const approval = store.approvalRequests.find((a) => a.id === id);
   if (!approval) return false;
 
@@ -361,8 +405,15 @@ export async function decideApproval(
   approval.decisionNote = note;
   approval.decidedBy = decidedBy;
 
-  store.hermesActivity.unshift(buildAudit(approval));
-  store.events.unshift(buildSignal(approval));
+  const audit = buildAudit(approval);
+  const signal = buildSignal(approval);
+
+  if (shouldUseSupabase()) {
+    return decideSupabaseApproval(id, decision, note, decidedBy, audit, signal);
+  }
+
+  store.hermesActivity.unshift(audit);
+  store.events.unshift(signal);
 
   await writeLocalStore(store);
   return true;

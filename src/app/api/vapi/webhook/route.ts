@@ -4,7 +4,6 @@ import { getStore } from "@/lib/store";
 import { buildInboundAssistant, vapiWebhookAuthorized } from "@/lib/vapi";
 
 export const runtime = "nodejs";
-export const preferredRegion = "sfo1";
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 

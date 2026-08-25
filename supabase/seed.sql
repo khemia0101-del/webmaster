@@ -1,0 +1,3 @@
+-- Production CRM data is imported explicitly with `npm run db:import`.
+-- Keeping the database seed empty prevents synthetic demo contacts from being
+-- mistaken for real customer or contractor records.
