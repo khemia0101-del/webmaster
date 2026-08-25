@@ -102,7 +102,7 @@ export async function sendInternalNotificationEmail({
   }
 }
 
-/** Durable no-database handoff for one compact phone lead. */
+/** Send an operational email notification after the compact lead is stored. */
 export async function sendPhoneLeadNotificationEmail(lead: Lead): Promise<MailResult> {
   if (!smtpConfigured()) {
     return {

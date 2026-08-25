@@ -104,7 +104,7 @@ export default async function AdminPage() {
       <Panel icon={<Gauge />} title="Production Readiness">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-[#5c6570]">
-            Local JSON supports development and demos. Production phone leads are handed to the configured Revenue Desk webhook because Vercel files are temporary.
+            Supabase is the durable production system of record. Local JSON is used only for development when Supabase credentials are absent.
           </p>
           <Badge tone={productionReady ? "good" : "warn"}>{productionReady ? "Ready" : "Needs env setup"}</Badge>
         </div>

@@ -1,25 +1,43 @@
 # Vapi inbound lead desk
 
-The app exposes a secured Vapi webhook at `/api/vapi/webhook`. It returns a
-transient English-only assistant, accepts one structured lead tool call, ranks
-eligible contractors, and immediately sends a compact lead to the internal
-Zoho inbox. A hosted Hermes / Conquistador Revenue Desk webhook can receive the
-same compact handoff when one is available.
+The app exposes a secured Vapi tool webhook at `/api/vapi/webhook`. The saved
+English-only Vapi assistant calls it once with a structured inquiry. The app
+stores the lead in Supabase, evaluates routing eligibility, and immediately
+sends a compact lead to the internal Zoho inbox. A hosted Hermes / Conquistador
+Revenue Desk webhook can receive the same compact handoff when one is
+available.
 
 No call recording, Vapi logging, full message history, or stored transcript is
 enabled. Hermes receives confirmed fields and a short summary, not the raw call.
 
-## Merge and preview deployment
+## Current Vapi resources
 
-PR #2 does not require any environment variables to compile, test, or create a
-Vercel preview. Missing runtime integrations remain inactive.
+Do not create a second inbound assistant. These resources already exist:
 
-## Production environment before live phone calls
+```text
+Assistant: Conquistador Inbound Lead Desk
+Assistant ID: 916302c4-5313-420f-bcd8-86be365b49bb
+Phone-number record ID: e9111cee-82b6-42f2-8461-be46cfa72f4a
+Phone number: +1 (223) 433-9345
+Assistant server URL: https://conquistadoroil.com/api/vapi/webhook
+Assistant server header: X-Vapi-Secret
+Model: openai / gpt-5.4-mini
+Voice: Vapi / Elliot
+```
 
-Add these values to Vercel before attaching the live Vapi number:
+The phone-number record is attached to that assistant. The assistant has the
+`save_phone_inquiry` function and `endCall` tool. Recording, Vapi logging, full
+message history, and transcripts are disabled.
+
+## Production environment for live phone calls
+
+Add these values to Vercel before accepting live Vapi calls:
 
 ```env
-NEXT_PUBLIC_SITE_URL=https://YOUR_PRODUCTION_DOMAIN
+NEXT_PUBLIC_SITE_URL=https://conquistadoroil.com
+
+SUPABASE_URL=https://qnxizmyyvhxhiwycwrod.supabase.co
+SUPABASE_SECRET_KEY=YOUR_SERVER_ONLY_SUPABASE_SECRET
 
 VAPI_WEBHOOK_SECRET=YOUR_RANDOM_64_CHARACTER_SECRET
 
@@ -36,43 +54,43 @@ HERMES_REVENUE_DESK_WEBHOOK_URL=
 HERMES_REVENUE_DESK_SECRET=
 ```
 
-The app already defaults to `openai`, `gpt-5.4-mini`, and a three-contractor
-activation threshold. Their override variables do not need to be added.
+The saved Vapi assistant owns the inbound model and voice configuration. The
+app defaults to a three-contractor routing threshold;
+`PHONE_ROUTING_MIN_CONTRACTORS` is needed only to override that value.
 
-`VAPI_API_KEY`, `VAPI_PHONE_NUMBER_ID`, `CRON_SECRET`, and database variables
-are not needed by this inbound-only implementation.
+The application does not consume a Vapi public key. `VAPI_PRIVATE_KEY` is not
+used during normal inbound calls; it is needed only to inspect or change Vapi
+resources, and by the separate outbound calling flow. Do not reuse a Vapi API
+key as `VAPI_WEBHOOK_SECRET`.
 
-## Connect Vapi later
+## Verify the Vapi connection
 
 1. Deploy the app and set the production variables above.
-2. Configure the Vapi phone number with no fixed assistant.
-3. Set the phone number server URL to:
+2. Confirm phone-number record `e9111cee-82b6-42f2-8461-be46cfa72f4a`
+   remains attached to assistant `916302c4-5313-420f-bcd8-86be365b49bb`.
+3. Confirm the assistant server URL is:
 
-   `https://YOUR_PRODUCTION_DOMAIN/api/vapi/webhook`
+   `https://conquistadoroil.com/api/vapi/webhook`
 
-4. Configure that server request to send the exact `VAPI_WEBHOOK_SECRET` value
-   in either `Authorization: Bearer <secret>` or `X-Vapi-Secret: <secret>`.
+4. Confirm its `X-Vapi-Secret` header value exactly matches the production
+   `VAPI_WEBHOOK_SECRET`. Compare values without printing them.
 
-If the dashboard only shows Vapi public/private API keys, that is expected.
-Those keys authenticate calls to Vapi's API; they are not the webhook secret.
-The phone number's `server.headers` can be configured during the later number
-integration using the Vapi API and the private key. Do not expose the private
-key in client code or reuse it as `VAPI_WEBHOOK_SECRET`.
+The assistant's server header can be inspected or updated through the Vapi API
+using `VAPI_PRIVATE_KEY`. Do not print either secret or expose the private key
+to client code. The inbound webhook does not return an assistant dynamically;
+it accepts authenticated tool calls from the saved assistant.
 
-With no fixed assistant, Vapi sends an `assistant-request` and the app returns
-the controlled transient assistant.
+## Lead durability
 
-The public website number remains unchanged until the Vapi number is ready.
+Production phone leads are committed to Supabase before notification delivery.
+The database transaction stores the compact lead, generated approvals, activity,
+and interaction events together. Vapi call IDs have a unique database index, so
+retries across separate Vercel instances resolve to the same lead. Local JSON is
+used only in development when Supabase credentials are absent.
 
-## Lead durability without a database
-
-Vercel function files are temporary. The local JSON store is therefore only for
-development and best-effort admin visibility.
-
-For production phone calls, the durable no-database record is the email sent to
+After the CRM commit, the app sends an operational notification to
 `PHONE_LEAD_NOTIFICATION_EMAIL`. If `HERMES_REVENUE_DESK_WEBHOOK_URL` is also
-configured, it receives the same compact lead. The phone tool reports success
-after at least one of those handoffs succeeds. The payload contains:
+configured, it receives the same compact lead. The payload contains:
 
 - caller name and callback details;
 - inquiry category and requested service;
@@ -85,23 +103,25 @@ It does not contain a transcript, recording URL, complete message history, or
 raw Vapi artifact.
 
 Vapi retries are idempotent by call ID. The app reuses a deterministic lead ID,
-coalesces concurrent retries in one runtime, and returns a completed handoff's
-stored tool result instead of sending the emails and webhook again. The stable
-lead ID is also the downstream idempotency key when separate serverless
-instances receive the same retry.
+coalesces concurrent retries in one runtime, and uses the Supabase uniqueness
+constraint plus a five-minute processing lease across runtimes. Only the lease
+holder sends notifications. A concurrent retry reports the
+already-saved inquiry as processing, while a completed handoff's stored tool
+result is returned instead of sending the emails and webhook again.
 
-There is intentionally no Vercel cron or delayed queue. Outside contractor
-hours, the lead inbox receives the inquiry immediately for follow-up. A hosted
-Hermes endpoint can over-watch the same event later. Automatic delayed
-contractor calls should be added only after the contractor system has a real
-durable datastore or queue.
+There is intentionally no Vercel cron or delayed queue. The current saved
+assistant does not have a live-transfer tool. All inbound inquiries are saved
+and handed to the Revenue Desk for follow-up, even when the app's deterministic
+routing policy identifies eligible contractors. A hosted Hermes endpoint can
+over-watch the same event later. Live transfer or automatic delayed contractor
+calls require a separately designed and deployed flow.
 
 ## Contractor routing data
 
-Automatic live transfer remains off for a service and area until at least three
-eligible contractors exist. Each contractor must be active, verified, free of
-missing documents, match the requested trade and zone, and contain a routing
-profile similar to:
+The app marks a service inquiry `transfer_ready` for internal routing only when
+at least three eligible contractors exist. Each contractor must be active,
+verified, free of missing documents, match the requested trade and zone, and
+contain a routing profile similar to:
 
 ```json
 {
@@ -123,27 +143,26 @@ profile similar to:
 ```
 
 The score is 50% proximity, 20% reliability, 15% service fit, 10% workload
-rotation, and 5% configured priority. Up to three eligible open destinations
-are returned for a live transfer attempt.
+rotation, and 5% configured priority. This routing result is stored for human
+follow-up; the current saved assistant does not initiate a live transfer.
 
 ## Guardrails
 
 - Service details are shared only after the caller grants permission.
-- Billing, careers, supplier, complaint, and other calls are logged without a
-  contractor transfer.
+- Billing, careers, supplier, complaint, and other calls are logged for
+  follow-up.
 - The assistant never quotes, books, promises dispatch, or accepts payment.
 - The assistant never calls or transfers to 911.
-- Warm transfers use a fixed compact message rather than a transcript.
 - If neither the lead inbox nor the optional Hermes endpoint accepts the lead,
-  the assistant does not claim it was saved and does not attempt a transfer.
+  the assistant does not claim that the handoff succeeded.
 
 ## Production smoke test
 
-1. Confirm the internal Zoho inbox receives one compact test lead.
-2. Call the Vapi number and complete a non-service inquiry.
-3. Confirm the assistant invokes `save_phone_inquiry` once.
-4. Confirm the inbox receives the fields but no transcript or recording.
-5. Add three test contractors matching one trade and zone.
-6. During their working hours, confirm an eligible service call can transfer.
-7. Outside their working hours, confirm the inbox receives
-   `queued_after_hours` and no transfer is attempted.
+1. Confirm `/api/readiness` reports a connected Supabase database.
+2. Confirm the internal Zoho inbox receives one compact test lead.
+3. Call the Vapi number and complete a non-service inquiry.
+4. Confirm the assistant invokes `save_phone_inquiry` once.
+5. Confirm the CRM and inbox contain the fields but no transcript or recording.
+6. Confirm no call transfer is attempted by the current saved assistant.
+7. If routing fixtures are used, confirm eligibility status is stored only for
+   human follow-up.

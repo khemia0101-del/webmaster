@@ -1,7 +1,7 @@
 import "server-only";
 
 import { brandConfig } from "@/lib/config";
-import { createLead, getStore, updateLeadWithAudit } from "@/lib/store";
+import { claimContractorOutreach, createLead, getStore, updateLeadWithAudit } from "@/lib/store";
 import type { HermesActivity, InteractionEvent, Lead } from "@/lib/types";
 import { createVapiContractorCall } from "@/lib/vapi-outbound";
 import {
@@ -350,6 +350,17 @@ async function captureContractorOutreachOnce(
     };
   }
 
+  const claimed = await claimContractorOutreach(existing, callId, uid("outreach-claim"));
+  if (!claimed) {
+    return {
+      saved: true,
+      leadId: existing.id,
+      disposition: existing.details.outreachDisposition,
+      message: "This call outcome is already being processed."
+    };
+  }
+  existing = claimed;
+
   let updated = existing;
   let disposition = existing.details.outreachDisposition as OutreachDisposition;
   if (!existing.details.outreachCompletedAt) {
@@ -439,7 +450,7 @@ async function captureContractorOutreachOnce(
     disposition,
     message: delivery.delivered
       ? "The structured contractor outcome was delivered for human review."
-      : "The structured outcome was captured locally, but the durable handoff failed."
+      : "The structured outcome was captured in the CRM, but the notification handoff failed."
   };
 }
 

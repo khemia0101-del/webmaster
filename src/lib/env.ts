@@ -10,16 +10,28 @@ export type EnvCheck = {
 export function getEnvChecks(): EnvCheck[] {
   return [
     {
+      key: "SUPABASE_URL",
+      label: "Supabase project URL",
+      present: Boolean(process.env.SUPABASE_URL),
+      requiredForProduction: true
+    },
+    {
+      key: "SUPABASE_SECRET_KEY",
+      label: "Supabase server secret key",
+      present: Boolean(process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY),
+      requiredForProduction: true
+    },
+    {
       key: "ADMIN_USERNAME",
       label: "Admin username",
       present: Boolean(process.env.ADMIN_USERNAME),
-      requiredForProduction: true
+      requiredForProduction: false
     },
     {
       key: "ADMIN_PASSWORD",
       label: "Admin password",
       present: Boolean(process.env.ADMIN_PASSWORD),
-      requiredForProduction: true
+      requiredForProduction: false
     },
     {
       key: "NEXT_PUBLIC_SITE_URL",

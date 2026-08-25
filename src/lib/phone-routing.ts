@@ -250,7 +250,7 @@ export function planPhoneRouting(lead: Lead, contractors: Contractor[], options:
 
   return {
     status: "transfer_ready",
-    reason: "Qualified contractors are available for a warm transfer.",
+    reason: "Qualified contractors are available for Revenue Desk follow-up.",
     candidates: [
       ...open,
       ...ranked.filter(({ contractor }) => !open.some((candidate) => candidate.contractor.id === contractor.id))
