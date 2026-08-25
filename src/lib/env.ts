@@ -25,13 +25,13 @@ export function getEnvChecks(): EnvCheck[] {
       key: "ADMIN_USERNAME",
       label: "Admin username",
       present: Boolean(process.env.ADMIN_USERNAME),
-      requiredForProduction: true
+      requiredForProduction: false
     },
     {
       key: "ADMIN_PASSWORD",
       label: "Admin password",
       present: Boolean(process.env.ADMIN_PASSWORD),
-      requiredForProduction: true
+      requiredForProduction: false
     },
     {
       key: "NEXT_PUBLIC_SITE_URL",
