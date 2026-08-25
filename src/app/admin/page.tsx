@@ -104,7 +104,7 @@ export default async function AdminPage() {
       <Panel icon={<Gauge />} title="Production Readiness">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-[#5c6570]">
-            Lowest-cost deployment uses persistent local file storage, admin credentials, and a public site URL. Supabase and paid APIs are optional later upgrades.
+            Local JSON supports development and demos. Production phone leads are handed to the configured Revenue Desk webhook because Vercel files are temporary.
           </p>
           <Badge tone={productionReady ? "good" : "warn"}>{productionReady ? "Ready" : "Needs env setup"}</Badge>
         </div>
@@ -149,7 +149,23 @@ export default async function AdminPage() {
                   <Badge tone={lead.outboundEmailStatus === "sent" ? "good" : lead.outboundEmailStatus === "failed" ? "bad" : "neutral"}>
                     Email: {lead.outboundEmailStatus || "pending"}
                   </Badge>
+                  {lead.phoneRouting ? (
+                    <Badge
+                      tone={
+                        lead.phoneRouting.status === "transfer_ready"
+                          ? "good"
+                          : lead.phoneRouting.status === "failed"
+                            ? "bad"
+                            : "warn"
+                      }
+                    >
+                      Phone: {lead.phoneRouting.status.replaceAll("_", " ")}
+                    </Badge>
+                  ) : null}
                 </div>
+                {lead.phoneRouting?.nextAttemptAt ? (
+                  <p className="mt-2 text-xs text-[#5c6570]">Next phone follow-up: {date(lead.phoneRouting.nextAttemptAt)}</p>
+                ) : null}
                 {lead.hermesReplyText ? (
                   <details className="mt-3 rounded-md bg-[#f4eadb] p-3 text-sm">
                     <summary className="cursor-pointer font-semibold text-[#0b2f4a]">Revenue Desk reply</summary>

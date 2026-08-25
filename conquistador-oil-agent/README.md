@@ -80,7 +80,7 @@ process_new_website_lead(
 - Live cost drivers: Vapi voice minutes (highest), the call LLM, Google Places
   requests, and (if used) the ECC bridge — each `claude -c` spawn is a separate
   billed session.
-- Biggest lever: set `HERMES_MODEL=gpt-4o-mini` and a low-cost TTS voice to
+- Biggest lever: set `HERMES_MODEL=gpt-5.4-mini` and a low-cost TTS voice to
   roughly halve per-minute call cost.
 
 ## Privacy & data handling

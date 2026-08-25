@@ -1,20 +1,20 @@
 import "server-only";
 
+import { createHash } from "crypto";
 import { promises as fs } from "fs";
 import path from "path";
 import { seedStore } from "@/data/seed";
 import { buildLeadArtifacts, classifyLead, isSafetyCritical, recommendationFor } from "@/lib/hermes";
-import {
-  applyDecision as sbApplyDecision,
-  findApproval as sbFindApproval,
-  insertActivity as sbInsertActivity,
-  insertEvent as sbInsertEvent,
-  insertLead as sbInsertLead,
-  readStore as sbReadStore,
-  supabaseConfigured,
-  updateLead as sbUpdateLead
-} from "@/lib/supabase";
-import type { ApprovalRequest, HermesActivity, InteractionEvent, Lead, LeadType, Store } from "@/lib/types";
+import type {
+  ApprovalRequest,
+  HermesActivity,
+  InteractionEvent,
+  Lead,
+  LeadType,
+  PhoneInquiryKind,
+  PhoneRoutingState,
+  Store
+} from "@/lib/types";
 
 const dataDir = process.env.VERCEL
   ? path.join("/tmp", "conquistador-data")
@@ -45,7 +45,6 @@ async function writeLocalStore(store: Store) {
 }
 
 export async function getStore(): Promise<Store> {
-  if (supabaseConfigured()) return sbReadStore();
   return readLocalStore();
 }
 
@@ -60,10 +59,6 @@ export async function recordEvent(
     actor: partial.actor ?? partial.source,
     ...partial
   };
-  if (supabaseConfigured()) {
-    await sbInsertEvent(event);
-    return event;
-  }
   const store = await readLocalStore();
   store.events.unshift(event);
   await writeLocalStore(store);
@@ -165,11 +160,6 @@ export async function createLead(form: FormData, fallbackType: LeadType) {
     });
   }
 
-  if (supabaseConfigured()) {
-    await sbInsertLead(lead, artifacts.approvals, artifacts.activity, events);
-    return lead;
-  }
-
   const store = await readLocalStore();
   store.leads.unshift(lead);
   store.approvalRequests.unshift(...artifacts.approvals);
@@ -180,19 +170,128 @@ export async function createLead(form: FormData, fallbackType: LeadType) {
   return lead;
 }
 
+export type PhoneLeadInput = {
+  vapiCallId: string;
+  inquiryKind: PhoneInquiryKind;
+  callerName: string;
+  callbackNumber: string;
+  email?: string;
+  serviceType: string;
+  issue: string;
+  summary: string;
+  address?: string;
+  city?: string;
+  postalCode?: string;
+  urgency?: string;
+  consentToShare: boolean;
+};
+
+function phoneFallbackType(input: PhoneLeadInput): LeadType {
+  if (input.inquiryKind === "careers") return "hiring";
+  if (input.inquiryKind !== "service") return "other";
+  const service = `${input.serviceType} ${input.issue}`.toLowerCase();
+  if (/diesel|fuel|heating oil|oil delivery|kerosene/.test(service)) return "fuel";
+  if (/commercial|property manager|multi[ -]?site/.test(service)) return "commercial_quote";
+  return "other";
+}
+
+/** Persist one structured phone inquiry. Raw transcripts and recordings never enter the store. */
+export async function createPhoneLead(input: PhoneLeadInput): Promise<Lead> {
+  const existing = await findLeadByVapiCallId(input.vapiCallId);
+  if (existing) return existing;
+
+  const createdAt = new Date().toISOString();
+  const details: Record<string, string> = {
+    inquiryKind: input.inquiryKind,
+    serviceType: input.serviceType,
+    issue: input.issue,
+    summary: input.summary,
+    city: input.city ?? "",
+    postalCode: input.postalCode ?? "",
+    urgency: input.urgency ?? "Not specified",
+    consentToShare: String(input.consentToShare)
+  };
+  const fallback = phoneFallbackType(input);
+  const type = classifyLead(details, fallback);
+  const safetyCritical = isSafetyCritical(details);
+  const callFingerprint = createHash("sha256")
+    .update(input.vapiCallId)
+    .digest("hex")
+    .slice(0, 24);
+  const routing: PhoneRoutingState = {
+    vapiCallId: input.vapiCallId,
+    inquiryKind: input.inquiryKind,
+    serviceType: input.serviceType,
+    consentToShare: input.consentToShare,
+    status: "collecting",
+    candidateContractorIds: []
+  };
+  const lead: Lead = {
+    id: `lead-phone-${callFingerprint}`,
+    createdAt,
+    source: "Vapi Phone",
+    type,
+    status: safetyCritical ? "human_escalation" : "new",
+    hermesDeliveryStatus: "pending",
+    outboundEmailStatus: "not_applicable",
+    name: input.callerName || "Phone caller",
+    phone: input.callbackNumber,
+    email: input.email,
+    siteAddress: input.address,
+    zone: input.city || input.postalCode || "Unknown",
+    details,
+    paymentRequirement: "No payment is collected or authorized by the phone assistant.",
+    hermesRecommendation: recommendationFor(type, safetyCritical),
+    safetyCritical,
+    phoneRouting: routing
+  };
+
+  const artifacts = buildLeadArtifacts(lead);
+  const events: InteractionEvent[] = [
+    {
+      id: uid("evt"),
+      createdAt,
+      kind: "phone_inquiry_logged",
+      eventType: "phone_inquiry_logged",
+      source: "Vapi",
+      actor: "Phone assistant",
+      label: `Logged ${input.inquiryKind} phone inquiry`,
+      leadType: type,
+      relatedRecordId: lead.id,
+      leadId: lead.id,
+      outcome: "lead_created",
+      confidence: 1,
+      riskLevel: safetyCritical ? "critical" : "low",
+      metadata: {
+        inquiryKind: input.inquiryKind,
+        serviceType: input.serviceType,
+        zone: lead.zone,
+        consentToShare: String(input.consentToShare)
+      }
+    }
+  ];
+
+  const store = await readLocalStore();
+  store.leads.unshift(lead);
+  store.approvalRequests.unshift(...artifacts.approvals);
+  store.hermesActivity.unshift(...artifacts.activity);
+  store.events.unshift(...events);
+  await writeLocalStore(store);
+  return lead;
+}
+
+export async function findLeadByVapiCallId(callId: string): Promise<Lead | null> {
+  if (!callId) return null;
+  const store = await getStore();
+  return store.leads.find((lead) => lead.phoneRouting?.vapiCallId === callId) ?? null;
+}
+
 export async function updateLeadWithAudit(
   id: string,
   patch: Partial<Lead>,
   activity: HermesActivity[] = [],
   events: InteractionEvent[] = []
 ) {
-  if (supabaseConfigured()) {
-    await sbUpdateLead(id, patch);
-    for (const item of activity) await sbInsertActivity(item);
-    for (const item of events) await sbInsertEvent(item);
-    return;
-  }
-
   const store = await readLocalStore();
   const lead = store.leads.find((item) => item.id === id);
   if (!lead) throw new Error(`Lead ${id} was not found.`);
@@ -253,20 +352,6 @@ export async function decideApproval(
     agreed: decision === "approved"
   });
 
-  if (supabaseConfigured()) {
-    const existing = await sbFindApproval(id);
-    if (!existing) return false;
-    const updated: ApprovalRequest = {
-      ...existing,
-      status: decision,
-      decidedAt: at,
-      decisionNote: note,
-      decidedBy
-    };
-    await sbApplyDecision(updated, buildAudit(updated), buildSignal(updated));
-    return true;
-  }
-
   const store = await readLocalStore();
   const approval = store.approvalRequests.find((a) => a.id === id);
   if (!approval) return false;
@@ -290,11 +375,13 @@ export async function exportStoreJson() {
 export async function exportLeadsCsv() {
   const store = await getStore();
   const rows = [
-    ["createdAt", "type", "status", "hermesDeliveryStatus", "outboundEmailStatus", "name", "company", "phone", "email", "siteAddress", "zone", "safetyCritical"],
+    ["createdAt", "type", "status", "phoneRoutingStatus", "nextPhoneAttemptAt", "hermesDeliveryStatus", "outboundEmailStatus", "name", "company", "phone", "email", "siteAddress", "zone", "safetyCritical"],
     ...store.leads.map((lead) => [
       lead.createdAt,
       lead.type,
       lead.status,
+      lead.phoneRouting?.status ?? "",
+      lead.phoneRouting?.nextAttemptAt ?? "",
       lead.hermesDeliveryStatus ?? "",
       lead.outboundEmailStatus ?? "",
       lead.name,

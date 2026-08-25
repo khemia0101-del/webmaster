@@ -18,6 +18,13 @@ type VapiOutboundCall = {
 
 type ContractorOutreachParameters = Record<string, unknown>;
 
+type ContractorOutreachResult = {
+  saved: boolean;
+  leadId: string;
+  disposition: string;
+  message: string;
+};
+
 type OutreachDisposition =
   | "interested"
   | "follow_up"
@@ -36,6 +43,7 @@ const DISPOSITIONS = new Set<OutreachDisposition>([
 ]);
 
 const uid = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+const inFlightOutcomes = new Map<string, Promise<ContractorOutreachResult>>();
 
 function text(value: unknown, maximum: number) {
   return String(value ?? "")
@@ -181,7 +189,7 @@ export async function startContractorOutreach(input: ContractorProspectInput, no
   }
 }
 
-async function sendHermesContractorOutreach(lead: Lead) {
+async function sendHermesContractorOutreach(lead: Lead, callId: string) {
   const url = process.env.HERMES_REVENUE_DESK_WEBHOOK_URL?.trim();
   if (!url) return false;
   const controller = new AbortController();
@@ -208,6 +216,7 @@ async function sendHermesContractorOutreach(lead: Lead) {
         ],
         lead: {
           id: lead.id,
+          vapiCallId: callId,
           createdAt: lead.createdAt,
           company: lead.company,
           contactName: lead.name,
@@ -241,7 +250,7 @@ async function sendHermesContractorOutreach(lead: Lead) {
   }
 }
 
-async function deliverContractorOutreach(lead: Lead) {
+async function deliverContractorOutreach(lead: Lead, callId: string) {
   const to =
     process.env.CONTRACTOR_OUTREACH_NOTIFICATION_EMAIL ||
     process.env.ZOHO_FROM_EMAIL ||
@@ -276,9 +285,10 @@ async function deliverContractorOutreach(lead: Lead) {
       to,
       subject: `[Contractor outreach] ${lead.details.outreachDisposition} - ${lead.company || lead.name}`,
       body,
-      replyTo: lead.email
+      replyTo: lead.email,
+      messageId: `<contractor-outreach.${callId.replace(/[^a-zA-Z0-9.-]/g, "")}@conquistadoroil.com>`
     }),
-    sendHermesContractorOutreach(lead)
+    sendHermesContractorOutreach(lead, callId)
   ]);
   const emailSent = mail.status === "fulfilled" && mail.value.status === "sent";
   const hermesDelivered = hermes.status === "fulfilled" && hermes.value;
@@ -312,92 +322,106 @@ async function recoverProspectFromCall(call: VapiOutboundCall) {
   return createLead(form, "contractor");
 }
 
-export async function captureContractorOutreach(
+async function captureContractorOutreachOnce(
+  callId: string,
+  leadId: string,
   call: VapiOutboundCall,
   parameters: ContractorOutreachParameters
-) {
-  const callId = text(call.id, 120);
-  let leadId = text(call.metadata?.leadId, 160);
-  if (!callId || !leadId) throw new Error("Vapi call metadata is missing.");
-
+): Promise<ContractorOutreachResult> {
   const store = await getStore();
-  let existing = store.leads.find((lead) => lead.id === leadId);
+  let existing = store.leads.find(
+    (lead) => lead.id === leadId || lead.details.vapiCallId === callId
+  );
   if (!existing) {
     existing = await recoverProspectFromCall(call) ?? undefined;
-    if (existing) leadId = existing.id;
   }
   if (!existing) throw new Error("The contractor prospect record was not found.");
-  if (existing.details.outreachCompletedAt) {
+  leadId = existing.id;
+
+  if (
+    existing.details.outreachDeliveryCompletedAt &&
+    existing.details.outreachDeliverySucceeded === "true"
+  ) {
     return {
       saved: true,
       leadId: existing.id,
       disposition: existing.details.outreachDisposition,
-      message: "This call outcome was already saved."
+      message: "This call outcome was already saved and delivered."
     };
   }
 
-  const suppliedDisposition = text(parameters.disposition, 30).toLowerCase();
-  const disposition: OutreachDisposition = DISPOSITIONS.has(suppliedDisposition as OutreachDisposition)
-    ? suppliedDisposition as OutreachDisposition
-    : "declined";
-  const company = text(parameters.companyName, 120) || existing.company || existing.name;
-  const contactName = text(parameters.contactName, 100) || existing.name;
-  const email = text(parameters.email, 160) || undefined;
-  const services = list(parameters.services).join(", ");
-  const serviceAreas = list(parameters.serviceAreas).join(", ");
-  const preferredLeadTypes = list(parameters.preferredLeadTypes).join(", ");
-  const permissionToFollowUp = disposition === "do_not_call" ? false : boolean(parameters.permissionToFollowUp);
-  const status = {
-    interested: "outreach_qualified",
-    follow_up: "outreach_follow_up",
-    declined: "outreach_declined",
-    do_not_call: "do_not_call",
-    wrong_number: "wrong_number",
-    voicemail: "outreach_voicemail"
-  }[disposition];
+  let updated = existing;
+  let disposition = existing.details.outreachDisposition as OutreachDisposition;
+  if (!existing.details.outreachCompletedAt) {
+    const suppliedDisposition = text(parameters.disposition, 30).toLowerCase();
+    disposition = DISPOSITIONS.has(suppliedDisposition as OutreachDisposition)
+      ? suppliedDisposition as OutreachDisposition
+      : "declined";
+    const company = text(parameters.companyName, 120) || existing.company || existing.name;
+    const contactName = text(parameters.contactName, 100) || existing.name;
+    const email = text(parameters.email, 160) || undefined;
+    const services = list(parameters.services).join(", ");
+    const serviceAreas = list(parameters.serviceAreas).join(", ");
+    const preferredLeadTypes = list(parameters.preferredLeadTypes).join(", ");
+    const permissionToFollowUp = disposition === "do_not_call" ? false : boolean(parameters.permissionToFollowUp);
+    const status = {
+      interested: "outreach_qualified",
+      follow_up: "outreach_follow_up",
+      declined: "outreach_declined",
+      do_not_call: "do_not_call",
+      wrong_number: "wrong_number",
+      voicemail: "outreach_voicemail"
+    }[disposition];
 
-  const updated: Lead = {
-    ...existing,
-    status,
-    name: contactName,
-    company,
-    email,
-    zone: serviceAreas || existing.zone,
-    details: {
-      ...existing.details,
-      vapiCallId: callId,
-      outreachDisposition: disposition,
-      outreachCompletedAt: new Date().toISOString(),
-      contactRole: text(parameters.contactRole, 100),
-      services,
-      serviceAreas,
-      businessHours: text(parameters.businessHours, 200),
-      afterHoursAvailable: String(boolean(parameters.afterHoursAvailable)),
-      preferredLeadTypes,
-      licensingConfirmed: String(boolean(parameters.licensingConfirmed)),
-      insuranceConfirmed: String(boolean(parameters.insuranceConfirmed)),
-      w9Ready: String(boolean(parameters.w9Ready)),
-      followUpPreference: text(parameters.followUpPreference, 160),
-      permissionToFollowUp: String(permissionToFollowUp),
-      doNotCall: String(disposition === "do_not_call"),
-      summary: text(parameters.summary, 240)
-    }
-  };
+    updated = {
+      ...existing,
+      status,
+      name: contactName,
+      company,
+      email,
+      zone: serviceAreas || existing.zone,
+      details: {
+        ...existing.details,
+        vapiCallId: callId,
+        outreachDisposition: disposition,
+        outreachCompletedAt: new Date().toISOString(),
+        contactRole: text(parameters.contactRole, 100),
+        services,
+        serviceAreas,
+        businessHours: text(parameters.businessHours, 200),
+        afterHoursAvailable: String(boolean(parameters.afterHoursAvailable)),
+        preferredLeadTypes,
+        licensingConfirmed: String(boolean(parameters.licensingConfirmed)),
+        insuranceConfirmed: String(boolean(parameters.insuranceConfirmed)),
+        w9Ready: String(boolean(parameters.w9Ready)),
+        followUpPreference: text(parameters.followUpPreference, 160),
+        permissionToFollowUp: String(permissionToFollowUp),
+        doNotCall: String(disposition === "do_not_call"),
+        summary: text(parameters.summary, 240)
+      }
+    };
 
-  await updateLeadWithAudit(
-    leadId,
-    updated,
-    [activity(updated, "Captured contractor outreach result", `${disposition}: ${updated.details.summary || "No summary."}`)],
-    [event(updated, "contractor_interaction", "Contractor outreach completed", disposition, {
-      vapiCallId: callId,
-      permissionToFollowUp: String(permissionToFollowUp)
-    })]
-  );
+    await updateLeadWithAudit(
+      leadId,
+      updated,
+      [activity(updated, "Captured contractor outreach result", `${disposition}: ${updated.details.summary || "No summary."}`)],
+      [event(updated, "contractor_interaction", "Contractor outreach completed", disposition, {
+        vapiCallId: callId,
+        permissionToFollowUp: String(permissionToFollowUp)
+      })]
+    );
+  }
 
-  const delivery = await deliverContractorOutreach(updated);
+  if (!DISPOSITIONS.has(disposition)) disposition = "declined";
+  const delivery = await deliverContractorOutreach(updated, callId);
   await updateLeadWithAudit(
     leadId,
     {
+      details: {
+        ...updated.details,
+        outreachDeliveryCompletedAt: new Date().toISOString(),
+        outreachDeliverySucceeded: String(delivery.delivered)
+      },
       hermesDeliveryStatus: delivery.hermesDelivered ? "sent" : delivery.delivered ? "needs_human" : "failed",
       outboundEmailStatus: delivery.emailStatus
     },
@@ -417,4 +441,26 @@ export async function captureContractorOutreach(
       ? "The structured contractor outcome was delivered for human review."
       : "The structured outcome was captured locally, but the durable handoff failed."
   };
+}
+
+export async function captureContractorOutreach(
+  call: VapiOutboundCall,
+  parameters: ContractorOutreachParameters
+): Promise<ContractorOutreachResult> {
+  const callId = text(call.id, 120);
+  const leadId = text(call.metadata?.leadId, 160);
+  if (!callId || !leadId) throw new Error("Vapi call metadata is missing.");
+
+  const inFlight = inFlightOutcomes.get(callId);
+  if (inFlight) return inFlight;
+
+  const task = captureContractorOutreachOnce(callId, leadId, call, parameters);
+  inFlightOutcomes.set(callId, task);
+  try {
+    return await task;
+  } finally {
+    if (inFlightOutcomes.get(callId) === task) {
+      inFlightOutcomes.delete(callId);
+    }
+  }
 }

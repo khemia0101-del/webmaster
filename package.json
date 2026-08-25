@@ -9,12 +9,11 @@
     "dev": "node scripts/next-dev.mjs",
     "build": "node scripts/next-build.mjs",
     "start": "next start",
-    "test": "tsx --test src/lib/vapi-outbound-policy.test.ts src/lib/contractor-discovery-policy.test.ts",
+    "test": "tsx --test src/lib/phone-routing.test.ts src/lib/vapi-outbound-policy.test.ts src/lib/contractor-discovery-policy.test.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.check.json"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.47.10",
     "clsx": "^2.1.1",
     "framer-motion": "^12.42.2",
     "lucide-react": "^0.556.0",
