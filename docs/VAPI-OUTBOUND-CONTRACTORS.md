@@ -7,12 +7,10 @@ Vapi places calls; it does not discover phone numbers. For discovery, the app se
 ## Production environment
 
 ```env
-NEXT_PUBLIC_SITE_URL=https://YOUR_PRODUCTION_DOMAIN
-ADMIN_USERNAME=YOUR_ADMIN_USERNAME
-ADMIN_PASSWORD=YOUR_ADMIN_PASSWORD
+NEXT_PUBLIC_SITE_URL=https://conquistadoroil.com
 
 VAPI_PRIVATE_KEY=YOUR_VAPI_PRIVATE_KEY
-VAPI_OUTBOUND_PHONE_NUMBER_ID=YOUR_VAPI_PHONE_NUMBER_ID
+VAPI_OUTBOUND_PHONE_NUMBER_ID=e9111cee-82b6-42f2-8461-be46cfa72f4a
 VAPI_OUTBOUND_WEBHOOK_SECRET=YOUR_RANDOM_64_CHARACTER_SHARED_SECRET
 
 ZOHO_SMTP_HOST=smtp.zoho.com
@@ -36,6 +34,15 @@ HERMES_REVENUE_DESK_SECRET=
 `VAPI_PRIVATE_KEY` is the private key shown in the Vapi dashboard. The app sends that private key using the API's standard `Authorization: Bearer ...` HTTP scheme; there is no separate bearer token to obtain. The Vapi public key is not used by this server-side workflow.
 
 `VAPI_OUTBOUND_WEBHOOK_SECRET` is a random secret you create. It is not either Vapi API key. The app includes it in the transient assistant's `X-Vapi-Outbound-Secret` header so `/api/vapi/outbound/webhook` can authenticate Vapi tool calls.
+
+The app injects `https://conquistadoroil.com/api/vapi/outbound/webhook` and that
+header into each transient assistant when it calls Vapi's `POST /call` API.
+There is no outbound webhook to configure in the Vapi dashboard. The app starts
+individual calls; it does not create or run Vapi Campaigns.
+
+The outreach page stays locked in production when admin credentials are absent.
+Set both `ADMIN_USERNAME` and `ADMIN_PASSWORD` only if Basic Auth access to the
+operator workflow is intentionally enabled.
 
 ## Hermes research contract
 

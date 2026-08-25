@@ -30,8 +30,6 @@ ZOHO_FROM_NAME=Conquistador Oil
 PHONE_LEAD_NOTIFICATION_EMAIL=info@conquistadoroil.com
 CONTRACTOR_OUTREACH_NOTIFICATION_EMAIL=info@conquistadoroil.com
 
-VAPI_MODEL_PROVIDER=openai
-VAPI_MODEL=gpt-5.4-mini
 PHONE_ROUTING_MIN_CONTRACTORS=3
 VAPI_OUTBOUND_MODEL=gpt-5.4
 VAPI_OUTBOUND_VOICE_ID=Elliot
@@ -81,11 +79,36 @@ If unused, disable or securely reject the endpoint rather than leaving it unauth
 
 ### Inbound Vapi
 
-Required when inbound Vapi calling is enabled:
+The inbound assistant already exists and is already attached. Do not create a
+duplicate assistant or replace the phone-number assignment:
+
+```text
+Assistant name: Conquistador Inbound Lead Desk
+Assistant ID: 916302c4-5313-420f-bcd8-86be365b49bb
+Phone-number record ID: e9111cee-82b6-42f2-8461-be46cfa72f4a
+Phone number: +1 (223) 433-9345
+Server URL: https://conquistadoroil.com/api/vapi/webhook
+Server header name: X-Vapi-Secret
+Model: openai / gpt-5.4-mini
+Voice: Vapi / Elliot
+```
+
+The saved assistant calls `save_phone_inquiry` and does not currently include
+a live-transfer tool. The app stores and routes the lead internally, and the
+assistant tells the caller the Revenue Desk will follow up. Do not claim that
+the current assistant performs a live transfer.
+
+This production variable must exactly match the saved assistant's
+`X-Vapi-Secret` header value:
 
 ```env
 VAPI_WEBHOOK_SECRET=<secure shared webhook secret>
 ```
+
+Use the Vapi private key to inspect the existing assistant and phone number.
+Verify their IDs, attachment, URL, header name, model, voice, tool schema, and
+disabled artifact settings without printing header or key values. The Vapi
+public key is not used by the server application.
 
 ### Zoho email
 
@@ -104,7 +127,7 @@ Required only when outbound calling is enabled:
 
 ```env
 VAPI_PRIVATE_KEY=<Vapi private server key>
-VAPI_OUTBOUND_PHONE_NUMBER_ID=<Vapi phone number ID>
+VAPI_OUTBOUND_PHONE_NUMBER_ID=e9111cee-82b6-42f2-8461-be46cfa72f4a
 VAPI_OUTBOUND_WEBHOOK_SECRET=<separate secure webhook secret>
 ```
 
@@ -113,6 +136,14 @@ Do not confuse:
 - `VAPI_WEBHOOK_SECRET`: inbound webhook authentication
 - `VAPI_OUTBOUND_WEBHOOK_SECRET`: outbound webhook authentication
 - `VAPI_PRIVATE_KEY`: Vapi server API credential
+
+The outbound app creates individual calls through Vapi's `POST /call` API. For
+each call it supplies a transient assistant whose server URL is
+`https://conquistadoroil.com/api/vapi/outbound/webhook` and whose
+`X-Vapi-Outbound-Secret` header is populated from
+`VAPI_OUTBOUND_WEBHOOK_SECRET`. Do not enter that outbound webhook in the Vapi
+dashboard, and do not configure a Vapi Campaign: the current app does not use
+Vapi's Campaigns feature.
 
 ### Optional Hermes integration
 
@@ -161,6 +192,9 @@ Do not manually configure `NODE_ENV` or `VERCEL`; the platform provides them.
 5. Confirm `/api/readiness` returns HTTP 200 without requiring admin credentials and reports Supabase as connected.
 6. Confirm the publishable key cannot directly read or write CRM tables.
 7. Confirm protected admin routes are not publicly accessible.
-8. Verify email and Vapi configuration without sending real email or placing real calls.
+8. Confirm the saved inbound assistant remains attached to phone-number record
+   `e9111cee-82b6-42f2-8461-be46cfa72f4a` and that its webhook header matches
+   `VAPI_WEBHOOK_SECRET`, reporting only a boolean match result.
+9. Verify email and Vapi configuration without sending real email or placing real calls.
 
 Report variable names and configuration status only. Never include sensitive values in the report.

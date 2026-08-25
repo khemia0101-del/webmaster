@@ -74,7 +74,7 @@ test("automatic routing waits for three eligible contractors", () => {
   assert.ok(plan.nextAttemptAt);
 });
 
-test("three open eligible contractors enable a transfer", () => {
+test("three open eligible contractors mark routing ready for follow-up", () => {
   const now = new Date("2026-07-27T13:00:00.000Z");
   const plan = planPhoneRouting(
     lead(),

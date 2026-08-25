@@ -2,7 +2,6 @@ import "server-only";
 
 import {
   DEFAULT_MINIMUM_CONTRACTOR_COVERAGE,
-  isContractorOpen,
   planPhoneRouting
 } from "@/lib/phone-routing";
 import { routeLeadToRevenueDesk } from "@/lib/revenue-desk";
@@ -86,7 +85,6 @@ function routingEvent(
 }
 
 function routingAction(status: PhoneRoutingStatus) {
-  if (status === "transfer_ready") return "transfer" as const;
   if (status === "logged_only") return "logged" as const;
   return "follow_up" as const;
 }
@@ -158,7 +156,6 @@ async function capturePhoneInquiryOnce(
 
   let phoneRouting: PhoneRoutingState;
   let event: InteractionEvent;
-  let transferDestinations: string[] = [];
 
   if (kind !== "service" || !consentToShare) {
     phoneRouting = {
@@ -190,20 +187,13 @@ async function capturePhoneInquiryOnce(
       nextAttemptAt: plan.nextAttemptAt,
       failureReason: plan.status === "transfer_ready" ? undefined : plan.reason
     };
-    transferDestinations =
-      plan.status === "transfer_ready"
-        ? plan.candidates
-            .filter(({ contractor }) => isContractorOpen(contractor))
-            .map(({ contractor }) => normalizeE164(contractor.routingProfile?.phoneNumber))
-            .filter(Boolean)
-        : [];
     event = routingEvent(
       lead,
       plan.status === "transfer_ready"
         ? "phone_routing_ready"
         : "phone_routing_queued",
       plan.status === "transfer_ready"
-        ? "Phone lead ready for a live contractor transfer"
+        ? "Phone lead has eligible contractors for Revenue Desk follow-up"
         : "Phone lead handed to Revenue Desk for follow-up",
       plan.status,
       {
@@ -230,12 +220,12 @@ async function capturePhoneInquiryOnce(
     leadId: lead.id,
     routingStatus: phoneRouting.status,
     action,
-    transferDestinations: saved ? transferDestinations : [],
+    // The saved inbound assistant is follow-up only and has no transfer tool.
+    // Keep candidate IDs in the CRM routing record, not phone numbers in model output.
+    transferDestinations: [],
     message:
       action === "handoff_failed"
         ? "The Revenue Desk handoff is temporarily unavailable."
-        : action === "transfer"
-        ? "The inquiry was handed to the Revenue Desk and eligible live transfer destinations are available."
         : action === "follow_up"
           ? "The inquiry was handed to the Revenue Desk for follow-up."
           : "The inquiry was handed to the Revenue Desk; no live transfer is needed."

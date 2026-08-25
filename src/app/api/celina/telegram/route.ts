@@ -1,14 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
+import { timingSafeEqual } from "crypto";
 import { renderCelinaCommand } from "@/lib/celina-commands";
 import { recordEvent, getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
 function authorized(request: NextRequest) {
-  const secret = process.env.CELINA_COMMAND_SECRET;
-  if (!secret) return true;
+  const secret = process.env.CELINA_COMMAND_SECRET?.trim();
+  if (!secret) return process.env.NODE_ENV !== "production";
   const header = request.headers.get("authorization") ?? "";
-  return header === `Bearer ${secret}`;
+  const supplied = header.startsWith("Bearer ") ? header.slice(7) : "";
+  const expectedBuffer = Buffer.from(secret);
+  const suppliedBuffer = Buffer.from(supplied);
+  return (
+    expectedBuffer.length === suppliedBuffer.length &&
+    timingSafeEqual(expectedBuffer, suppliedBuffer)
+  );
 }
 
 export async function POST(request: NextRequest) {

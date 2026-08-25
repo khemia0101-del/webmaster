@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { capturePhoneInquiry } from "@/lib/phone-operations";
-import { getStore } from "@/lib/store";
-import { buildInboundAssistant, vapiWebhookAuthorized } from "@/lib/vapi";
+import { vapiWebhookAuthorized } from "@/lib/vapi";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -106,12 +105,6 @@ export async function POST(request: Request) {
   }
 
   switch (message.type) {
-    case "assistant-request": {
-      const store = await getStore();
-      return NextResponse.json({
-        assistant: buildInboundAssistant(store.contractors)
-      });
-    }
     case "tool-calls":
       return handleToolCalls(message);
     default:
