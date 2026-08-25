@@ -84,6 +84,12 @@ after at least one of those handoffs succeeds. The payload contains:
 It does not contain a transcript, recording URL, complete message history, or
 raw Vapi artifact.
 
+Vapi retries are idempotent by call ID. The app reuses a deterministic lead ID,
+coalesces concurrent retries in one runtime, and returns a completed handoff's
+stored tool result instead of sending the emails and webhook again. The stable
+lead ID is also the downstream idempotency key when separate serverless
+instances receive the same retry.
+
 There is intentionally no Vercel cron or delayed queue. Outside contractor
 hours, the lead inbox receives the inquiry immediately for follow-up. A hosted
 Hermes endpoint can over-watch the same event later. Automatic delayed

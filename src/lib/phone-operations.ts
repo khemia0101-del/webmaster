@@ -8,12 +8,14 @@ import {
 import { routeLeadToRevenueDesk } from "@/lib/revenue-desk";
 import {
   createPhoneLead,
+  findLeadByVapiCallId,
   getStore,
   updateLeadWithAudit
 } from "@/lib/store";
 import type {
   InteractionEvent,
   Lead,
+  PhoneInquiryHandoffResult,
   PhoneInquiryKind,
   PhoneRoutingState,
   PhoneRoutingStatus
@@ -29,6 +31,7 @@ type VapiCall = {
 type PhoneInquiryParameters = Record<string, unknown>;
 
 const uid = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+const inFlightInquiries = new Map<string, Promise<PhoneInquiryHandoffResult>>();
 
 function text(value: unknown, maximum: number) {
   return String(value ?? "")
@@ -92,10 +95,11 @@ function routingAction(status: PhoneRoutingStatus) {
  * admin view during development; the Hermes webhook is the production handoff.
  * No transcript, recording, or full Vapi message history is forwarded.
  */
-export async function capturePhoneInquiry(call: VapiCall, parameters: PhoneInquiryParameters) {
-  const callId = text(call.id, 120);
-  if (!callId) throw new Error("Vapi call ID is missing.");
-
+async function capturePhoneInquiryOnce(
+  callId: string,
+  call: VapiCall,
+  parameters: PhoneInquiryParameters
+): Promise<PhoneInquiryHandoffResult> {
   const kind = inquiryKind(parameters.inquiryKind);
   const normalizedCallbackNumber =
     normalizeE164(text(parameters.callbackNumber, 40)) || normalizeE164(call.customer?.number);
@@ -112,7 +116,12 @@ export async function capturePhoneInquiry(call: VapiCall, parameters: PhoneInqui
     throw new Error("Confirm the service city or postal code before saving this service inquiry.");
   }
 
-  const lead = await createPhoneLead({
+  const existingLead = await findLeadByVapiCallId(callId);
+  if (existingLead?.phoneRouting?.handoffResult) {
+    return existingLead.phoneRouting.handoffResult;
+  }
+
+  const lead = existingLead ?? await createPhoneLead({
     vapiCallId: callId,
     inquiryKind: kind,
     callerName: text(parameters.callerName, 100) || "Phone caller",
@@ -198,7 +207,7 @@ export async function capturePhoneInquiry(call: VapiCall, parameters: PhoneInqui
     ? routingAction(phoneRouting.status)
     : "handoff_failed";
 
-  return {
+  const result: PhoneInquiryHandoffResult = {
     saved,
     leadId: lead.id,
     routingStatus: phoneRouting.status,
@@ -213,4 +222,35 @@ export async function capturePhoneInquiry(call: VapiCall, parameters: PhoneInqui
           ? "The inquiry was handed to the Revenue Desk for follow-up."
           : "The inquiry was handed to the Revenue Desk; no live transfer is needed."
   };
+
+  await updateLeadWithAudit(lead.id, {
+    phoneRouting: {
+      ...phoneRouting,
+      handoffCompletedAt: new Date().toISOString(),
+      handoffResult: result
+    }
+  });
+
+  return result;
+}
+
+export async function capturePhoneInquiry(
+  call: VapiCall,
+  parameters: PhoneInquiryParameters
+): Promise<PhoneInquiryHandoffResult> {
+  const callId = text(call.id, 120);
+  if (!callId) throw new Error("Vapi call ID is missing.");
+
+  const inFlight = inFlightInquiries.get(callId);
+  if (inFlight) return inFlight;
+
+  const task = capturePhoneInquiryOnce(callId, call, parameters);
+  inFlightInquiries.set(callId, task);
+  try {
+    return await task;
+  } finally {
+    if (inFlightInquiries.get(callId) === task) {
+      inFlightInquiries.delete(callId);
+    }
+  }
 }

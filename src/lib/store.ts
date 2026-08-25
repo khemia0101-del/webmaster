@@ -1,5 +1,6 @@
 import "server-only";
 
+import { createHash } from "crypto";
 import { promises as fs } from "fs";
 import path from "path";
 import { seedStore } from "@/data/seed";
@@ -213,7 +214,10 @@ export async function createPhoneLead(input: PhoneLeadInput): Promise<Lead> {
   const fallback = phoneFallbackType(input);
   const type = classifyLead(details, fallback);
   const safetyCritical = isSafetyCritical(details);
-  const callSuffix = input.vapiCallId.replace(/[^a-zA-Z0-9]/g, "").slice(-12) || Math.random().toString(16).slice(2);
+  const callFingerprint = createHash("sha256")
+    .update(input.vapiCallId)
+    .digest("hex")
+    .slice(0, 24);
   const routing: PhoneRoutingState = {
     vapiCallId: input.vapiCallId,
     inquiryKind: input.inquiryKind,
@@ -223,7 +227,7 @@ export async function createPhoneLead(input: PhoneLeadInput): Promise<Lead> {
     candidateContractorIds: []
   };
   const lead: Lead = {
-    id: `lead-phone-${Date.now()}-${callSuffix}`,
+    id: `lead-phone-${callFingerprint}`,
     createdAt,
     source: "Vapi Phone",
     type,

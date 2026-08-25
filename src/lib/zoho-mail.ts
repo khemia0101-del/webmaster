@@ -31,6 +31,11 @@ function transporter() {
   });
 }
 
+function stableMessageId(kind: string, lead: Lead) {
+  const token = lead.id.replace(/[^a-zA-Z0-9.-]/g, "");
+  return `<${kind}.${token}@conquistadoroil.com>`;
+}
+
 export async function sendLeadReplyEmail({
   lead,
   subject,
@@ -47,6 +52,7 @@ export async function sendLeadReplyEmail({
     const fromEmail = process.env.ZOHO_FROM_EMAIL || brandConfig.email;
     const fromName = process.env.ZOHO_FROM_NAME || brandConfig.name;
     const result = await transporter().sendMail({
+      messageId: stableMessageId("lead-reply", lead),
       from: `"${fromName}" <${fromEmail}>`,
       replyTo: fromEmail,
       to: lead.email,
@@ -104,6 +110,7 @@ export async function sendPhoneLeadNotificationEmail(lead: Lead): Promise<MailRe
 
   try {
     const result = await transporter().sendMail({
+      messageId: stableMessageId("phone-lead", lead),
       from: `"${fromName}" <${fromEmail}>`,
       replyTo: lead.email || fromEmail,
       to,

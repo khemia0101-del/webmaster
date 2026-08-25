@@ -57,6 +57,15 @@ export type PhoneRoutingStatus =
   | "transfer_ready"
   | "failed";
 
+export type PhoneInquiryHandoffResult = {
+  saved: boolean;
+  leadId: string;
+  routingStatus: PhoneRoutingStatus;
+  action: "transfer" | "follow_up" | "logged" | "handoff_failed";
+  transferDestinations: string[];
+  message: string;
+};
+
 export type PhoneRoutingState = {
   vapiCallId: string;
   inquiryKind: PhoneInquiryKind;
@@ -66,6 +75,8 @@ export type PhoneRoutingState = {
   candidateContractorIds: string[];
   nextAttemptAt?: string;
   failureReason?: string;
+  handoffCompletedAt?: string;
+  handoffResult?: PhoneInquiryHandoffResult;
 };
 
 export type Customer = {
