@@ -10,12 +10,6 @@ export type EnvCheck = {
 export function getEnvChecks(): EnvCheck[] {
   return [
     {
-      key: "DATA_DIR",
-      label: "Persistent local data directory",
-      present: true,
-      requiredForProduction: true
-    },
-    {
       key: "ADMIN_USERNAME",
       label: "Admin username",
       present: Boolean(process.env.ADMIN_USERNAME),
@@ -40,6 +34,18 @@ export function getEnvChecks(): EnvCheck[] {
       requiredForProduction: false
     },
     {
+      key: "HERMES_REVENUE_DESK_SECRET",
+      label: "Conquistador Revenue Desk webhook secret",
+      present: Boolean(process.env.HERMES_REVENUE_DESK_SECRET),
+      requiredForProduction: false
+    },
+    {
+      key: "VAPI_WEBHOOK_SECRET",
+      label: "Vapi webhook shared secret",
+      present: Boolean(process.env.VAPI_WEBHOOK_SECRET),
+      requiredForProduction: false
+    },
+    {
       key: "ZOHO_SMTP_USER",
       label: "Zoho email account",
       present: Boolean(process.env.ZOHO_SMTP_USER),
@@ -49,6 +55,12 @@ export function getEnvChecks(): EnvCheck[] {
       key: "ZOHO_SMTP_PASS",
       label: "Zoho email app password",
       present: Boolean(process.env.ZOHO_SMTP_PASS),
+      requiredForProduction: false
+    },
+    {
+      key: "PHONE_LEAD_NOTIFICATION_EMAIL",
+      label: "Internal phone lead notification inbox",
+      present: Boolean(process.env.PHONE_LEAD_NOTIFICATION_EMAIL),
       requiredForProduction: false
     }
   ];

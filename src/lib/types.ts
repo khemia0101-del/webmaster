@@ -38,6 +38,45 @@ export type Lead = {
   paymentRequirement: string;
   hermesRecommendation: string;
   safetyCritical: boolean;
+  phoneRouting?: PhoneRoutingState;
+};
+
+export type PhoneInquiryKind =
+  | "service"
+  | "billing"
+  | "careers"
+  | "supplier"
+  | "complaint"
+  | "other";
+
+export type PhoneRoutingStatus =
+  | "collecting"
+  | "logged_only"
+  | "queued_coverage"
+  | "queued_after_hours"
+  | "transfer_ready"
+  | "failed";
+
+export type PhoneInquiryHandoffResult = {
+  saved: boolean;
+  leadId: string;
+  routingStatus: PhoneRoutingStatus;
+  action: "transfer" | "follow_up" | "logged" | "handoff_failed";
+  transferDestinations: string[];
+  message: string;
+};
+
+export type PhoneRoutingState = {
+  vapiCallId: string;
+  inquiryKind: PhoneInquiryKind;
+  serviceType: string;
+  consentToShare: boolean;
+  status: PhoneRoutingStatus;
+  candidateContractorIds: string[];
+  nextAttemptAt?: string;
+  failureReason?: string;
+  handoffCompletedAt?: string;
+  handoffResult?: PhoneInquiryHandoffResult;
 };
 
 export type Customer = {
@@ -68,6 +107,28 @@ export type Contractor = {
   lastVerified?: string;
   verificationStatus?: "verified" | "pending" | "unverified" | "expired";
   verificationConfidence?: "high" | "medium" | "low";
+  routingProfile?: ContractorRoutingProfile;
+};
+
+export type BusinessDay = "sun" | "mon" | "tue" | "wed" | "thu" | "fri" | "sat";
+
+export type BusinessHoursWindow = {
+  open: string;
+  close: string;
+};
+
+export type ContractorRoutingProfile = {
+  phoneNumber: string;
+  timeZone: string;
+  businessHours: Partial<Record<BusinessDay, BusinessHoursWindow[]>>;
+  acceptingLeads: boolean;
+  postalCode?: string;
+  latitude?: number;
+  longitude?: number;
+  priority?: number;
+  lastAssignedAt?: string;
+  assignmentsToday?: number;
+  assignmentsDate?: string;
 };
 
 export type Job = {
@@ -150,6 +211,9 @@ export type InteractionEventKind =
   | "follow_up_sent"
   | "follow_up_failed"
   | "contractor_contacted"
+  | "phone_inquiry_logged"
+  | "phone_routing_ready"
+  | "phone_routing_queued"
   | "approval_decided"
   | "contractor_interaction"
   | "system_error"

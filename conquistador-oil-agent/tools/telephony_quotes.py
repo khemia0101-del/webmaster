@@ -154,7 +154,7 @@ def place_outbound_call(
             ),
             "model": {
                 "provider": "openai",
-                "model": os.getenv("HERMES_MODEL", "gpt-4o"),
+                "model": os.getenv("HERMES_MODEL", "gpt-5.4-mini"),
                 "temperature": 0.2,
                 "messages": [
                     {
