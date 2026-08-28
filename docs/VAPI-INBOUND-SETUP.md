@@ -18,12 +18,15 @@ Do not create a second inbound assistant. These resources already exist:
 Assistant: Conquistador Inbound Lead Desk
 Assistant ID: 916302c4-5313-420f-bcd8-86be365b49bb
 Phone-number record ID: e9111cee-82b6-42f2-8461-be46cfa72f4a
-Phone number: +1 (223) 433-9345
+Vapi phone number (not the public site number): +1 (223) 433-9345
 Assistant server URL: https://conquistadoroil.com/api/vapi/webhook
 Assistant server header: X-Vapi-Secret
 Model: openai / gpt-5.4-mini
 Voice: Vapi / Elliot
 ```
+
+The public website contact number is `(717) 397-9800` (`tel:+17173979800`).
+Restoring that public number does not change the Vapi number assignment or configure call forwarding.
 
 The phone-number record is attached to that assistant. The assistant has the
 `save_phone_inquiry` function and `endCall` tool. Recording, Vapi logging, full

@@ -86,12 +86,15 @@ duplicate assistant or replace the phone-number assignment:
 Assistant name: Conquistador Inbound Lead Desk
 Assistant ID: 916302c4-5313-420f-bcd8-86be365b49bb
 Phone-number record ID: e9111cee-82b6-42f2-8461-be46cfa72f4a
-Phone number: +1 (223) 433-9345
+Vapi phone number (not the public site number): +1 (223) 433-9345
 Server URL: https://conquistadoroil.com/api/vapi/webhook
 Server header name: X-Vapi-Secret
 Model: openai / gpt-5.4-mini
 Voice: Vapi / Elliot
 ```
+
+The public website contact number is `(717) 397-9800` (`tel:+17173979800`).
+Restoring that public number does not change the Vapi number assignment or configure call forwarding.
 
 The saved assistant calls `save_phone_inquiry` and does not currently include
 a live-transfer tool. The app stores and routes the lead internally, and the

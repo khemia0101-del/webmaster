@@ -57,7 +57,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       id: lead.id,
       message:
-        "Thanks. Conquistador Oil received your message. If this is urgent or involves no heat, please call (223) 433-9345."
+        "Thanks. Conquistador Oil received your message. If this is urgent or involves no heat, please call (717) 397-9800."
     });
   } catch (err) {
     await recordEvent({

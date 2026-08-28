@@ -126,7 +126,7 @@ individual calls and does not use Vapi Campaigns.
 2. The site atomically saves the lead, approvals, activity, and interaction events in Supabase.
 3. If Revenue Desk webhook settings are present, the lead is handed off to the Conquistador Revenue Desk.
 4. If Zoho SMTP settings are present, outbound email replies can be sent from `info@conquistadoroil.com`.
-5. Emergency / no-heat leads use conservative language and direct customers to call `(223) 433-9345`.
+5. Emergency / no-heat leads use conservative language and direct customers to call `(717) 397-9800`.
 
 Inbound Vapi calls use saved assistant `916302c4-5313-420f-bcd8-86be365b49bb`, which is attached to phone-number record `e9111cee-82b6-42f2-8461-be46cfa72f4a`. It collects structured details and sends one compact lead to the internal inbox and optional Hermes webhook for follow-up. The saved assistant does not currently include a live-transfer tool.
 
@@ -198,5 +198,5 @@ Public copy avoids unsupported claims such as guaranteed response times, guarant
 For urgent heating or no-heat situations, the site directs customers to call:
 
 ```text
-(223) 433-9345
+(717) 397-9800
 ```
