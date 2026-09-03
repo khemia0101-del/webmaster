@@ -1,19 +1,14 @@
 import { spawn } from "node:child_process";
-import path from "node:path";
+import { nextOptions } from "./next-options.mjs";
 
 const cwd = process.cwd();
-const nextBin = path.join(cwd, "node_modules", "next", "dist", "bin", "next");
+const { args, env } = nextOptions("build", cwd, process.platform, process.env, process.argv.slice(2));
 
-const child = spawn(process.execPath, [nextBin, "build", "--webpack", ...process.argv.slice(2)], {
+const child = spawn(process.execPath, args, {
   cwd,
-  env: {
-    ...process.env,
-    NEXT_TEST_WASM_DIR: path.join(cwd, "node_modules", "@next", "swc-wasm-nodejs"),
-    LOCALAPPDATA: path.join(cwd, ".appdata", "Local"),
-    APPDATA: path.join(cwd, ".appdata", "Roaming"),
-    XDG_CONFIG_HOME: path.join(cwd, ".config")
-  },
+  env,
   stdio: "inherit"
 });
 
-child.on("exit", (code) => process.exit(code ?? 0));
+child.on("error", (error) => { console.error(error.message); process.exit(1); });
+child.on("exit", (code) => process.exit(code ?? 1));

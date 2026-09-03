@@ -1,19 +1,16 @@
 import { NextResponse } from "next/server";
 import { recordEvent } from "@/lib/store";
+import { guardPublicRequest, publicJson, stringFields, validExperiment, impressionId, PublicRequestError, publicErrorResponse } from "@/lib/public-request";
 
 export async function POST(request: Request) {
-  const body = (await request.json().catch(() => ({}))) as {
-    experimentId?: string;
-    variantId?: string;
-    page?: string;
-  };
-
-  if (!body.experimentId || !body.variantId) {
-    return NextResponse.json({ error: "Missing experiment data." }, { status: 400 });
-  }
-
   try {
+    await guardPublicRequest(request, "impressions");
+    const body = stringFields(await publicJson(request, 2048), ["experimentId", "variantId", "page"]);
+    if (!validExperiment(body.experimentId, body.variantId, body.page, request)) {
+      throw new PublicRequestError("Invalid experiment assignment.");
+    }
     await recordEvent({
+      id: impressionId(request, body.experimentId),
       kind: "experiment_impression",
       source: "Website",
       label: `${body.experimentId}:${body.variantId} impression`,
@@ -24,7 +21,7 @@ export async function POST(request: Request) {
       }
     });
   } catch (error) {
-    console.warn("Experiment impression could not be recorded", error);
+    return publicErrorResponse(error) ?? NextResponse.json({ error: "Impression could not be recorded." }, { status: 503 });
   }
 
   return NextResponse.json({ ok: true });

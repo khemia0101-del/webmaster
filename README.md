@@ -42,15 +42,16 @@ Live site: https://conquistadoroil.com/
 - Optional Zoho SMTP outbound email
 - Vapi inbound phone intake with deterministic contractor routing and compact Hermes audit events
 
-The `conquistador-oil-agent` Python directory is a legacy experiment and is not
+The `archive/conquistador-oil-agent` Python directory is a legacy experiment and is not
 part of the active production system. Do not configure its Google Places or
 Codex OAuth variables for this application.
 
 ## Local Development
 
 ```powershell
-cd "C:\Users\rocam\OneDrive\Documents\webmaster"
-npm.cmd install
+git clone https://github.com/khemia0101-del/webmaster.git
+cd webmaster
+npm.cmd ci
 npm.cmd run dev
 ```
 
@@ -82,7 +83,7 @@ Copy `.env.example` and fill production values as needed.
 
 ```env
 NEXT_PUBLIC_SITE_URL=https://conquistadoroil.com
-SUPABASE_URL=https://qnxizmyyvhxhiwycwrod.supabase.co
+SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SECRET_KEY=YOUR_SERVER_ONLY_SUPABASE_SECRET
 
 HERMES_REVENUE_DESK_WEBHOOK_URL=
@@ -128,7 +129,7 @@ individual calls and does not use Vapi Campaigns.
 4. If Zoho SMTP settings are present, outbound email replies can be sent from `info@conquistadoroil.com`.
 5. Emergency / no-heat leads use conservative language and direct customers to call `(717) 397-9800`.
 
-Inbound Vapi calls use saved assistant `916302c4-5313-420f-bcd8-86be365b49bb`, which is attached to phone-number record `e9111cee-82b6-42f2-8461-be46cfa72f4a`. It collects structured details and sends one compact lead to the internal inbox and optional Hermes webhook for follow-up. The saved assistant does not currently include a live-transfer tool.
+Inbound Vapi calls use an operator-configured saved assistant attached to the selected phone-number record. Keep account-specific identifiers in private deployment records, not this README. The assistant collects structured details and sends one compact lead to the internal inbox and optional Hermes webhook for follow-up. The supported configuration does not include a live-transfer tool.
 
 Forms and chat are intentionally website-intake only. There is no public booking guarantee, pricing promise, payment flow, or automatic dispatch confirmation.
 
@@ -142,7 +143,7 @@ Interact -> capture signal -> score outcome -> extract learning -> choose action
 
 Endpoints:
 
-- `/api/celina/loop` returns the current revenue goal, bottleneck, learning records, and action queue.
+- `/api/celina/loop` requires admin Basic Auth and returns the current revenue goal, bottleneck, learning records, and action queue. It is never a public report.
 - `/api/celina/telegram` accepts a JSON `POST` with `command` for Telegram-style commands such as `/status`, `/today`, `/learned`, `/actions`, and `/goal`.
 
 Set `CELINA_COMMAND_SECRET` in production to enable command calls authenticated
@@ -154,7 +155,7 @@ rejects production requests instead of allowing anonymous access.
 Production deploy:
 
 ```powershell
-C:\Users\rocam\AppData\Local\hermes\node\vercel.cmd deploy --prod --yes
+vercel deploy --prod
 ```
 
 Production site:
@@ -163,7 +164,9 @@ Production site:
 https://conquistadoroil.com/
 ```
 
-The repo includes `.vercelignore` to keep local logs, build output, caches, and data files out of deployments.
+Before deploying this revision, apply the database migrations, including `20260903120000_public_request_limits.sql`. Public writes intentionally return 503 if their shared rate limiter is unavailable. See [the rollout checklist](docs/OPERATIONS.md) for staging verification and production gates.
+
+The repo includes `.vercelignore` to keep archives, internal documents, local logs, build output, caches, and data files out of deployments. Windows-only compiler workarounds apply only on Windows; Linux/Vercel uses Next.js defaults. `RUN_APP.cmd` and `RUN_APP.ps1` remain convenience launchers, not deployment tools.
 
 ## Content and Brand Assets
 
@@ -176,11 +179,11 @@ public/brand
 Current assets include:
 
 - `conquistador-oil-logo.png`
-- `placeholder-oil-delivery.svg`
-- `placeholder-hvac-service.svg`
-- `placeholder-local-building.svg`
+- `heating-oil-delivery-lancaster.webp`
+- `hvac-service-technician.webp`
+- `local-service-building.webp`
 
-The placeholder service images are branded illustrations, not claimed real field photos. Replace them with real truck, team, building, or service photos when available.
+Service visuals are illustrative, not verified photos of company vehicles, staff, or premises. Prefer verified real photos when available. The service images are pre-compressed WebP and are served with responsive `next/image` sizes. No external asset-hosting service is required.
 
 ## Admin and Data Notes
 
@@ -188,8 +191,17 @@ The placeholder service images are branded illustrations, not claimed real field
 - Supabase is mandatory in production. The app fails closed instead of writing customer data to Vercel's temporary filesystem when credentials are missing or incomplete.
 - Local JSON remains an explicit development-only fallback when neither Supabase variable is set; `DATA_DIR` may override its local path.
 - The server secret is never exposed to browser code. Anonymous and authenticated Data API roles have no CRM table or write-function privileges, and every exposed CRM table has RLS enabled.
-- `/api/readiness` verifies both required environment variables and a live Supabase query. `/api/health` remains a lightweight liveness endpoint.
+- `/api/readiness` verifies core configuration, Supabase connectivity, and the abuse-protection table, returning only `{ "ready": true/false }`. Admin-only `/api/admin/readiness` provides configuration-presence diagnostics without customer counts. Neither endpoint proves notification delivery, contractor availability, or operational launch readiness. `/api/health` remains a lightweight liveness endpoint.
 - `/api/export/leads` and `/api/export/store` provide authenticated backup/export paths.
+
+## Public Endpoint Protection and Tests
+
+- Intake and chat share a limit of 10 requests per 15 minutes per platform-provided IP; impressions allow 60. Supabase enforces counters atomically across instances. Raw IP addresses are not stored. Development-only JSON mode uses local counters.
+- Only Vercel's `x-vercel-forwarded-for` is trusted, and only when running on Vercel. Self-hosted deployments share a conservative bucket until an explicitly trusted proxy integration is implemented. Missing/malformed platform IPs share a bucket as well.
+- Public writes check request origin, content type, streamed body size, field types/lengths, and honeypots. Rejections do not write CRM error events. Limits do not replace an edge firewall or a human-verification challenge during distributed abuse.
+- Impressions must match an active experiment, expected page, and assignment cookie. Stable event IDs suppress repeat impressions for a visitor/experiment within a fixed 30-minute UTC bucket. Cookies are not proof of a human or fraud-proof attribution.
+- `npm test` discovers all `src/lib/*.test.ts` and `scripts/*.test.mjs` tests. `npm run db:test` runs the SQL suite against a **local** Supabase instance. CI runs application checks, a native Linux build, and SQL tests on an isolated database, never production.
+- Legacy Python code, old PDFs, and old bot instructions are reference-only; see [archive boundaries](archive/README.md). Nothing under `archive/` or `docs/legacy/` is current operational policy.
 
 ## Safety Notes
 

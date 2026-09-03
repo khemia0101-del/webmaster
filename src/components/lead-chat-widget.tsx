@@ -10,10 +10,12 @@ export function LeadChatWidget() {
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const element = event.currentTarget;
     setStatus("sending");
     setMessage("");
-    const form = new FormData(event.currentTarget);
+    const form = new FormData(element);
     const payload = Object.fromEntries(Array.from(form.entries()).map(([key, value]) => [key, String(value)]));
+    try {
     const response = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -27,7 +29,11 @@ export function LeadChatWidget() {
     }
     setStatus("sent");
     setMessage(body.message || "Message received.");
-    event.currentTarget.reset();
+    element.reset();
+    } catch {
+      setStatus("error");
+      setMessage("We could not confirm receipt. Please call (717) 397-9800 before resubmitting.");
+    }
   }
 
   return (
@@ -44,6 +50,7 @@ export function LeadChatWidget() {
             </button>
           </div>
           <form className="grid gap-3 p-4 text-sm" onSubmit={submit}>
+            <div hidden aria-hidden="true"><label>Leave blank<input name="website" tabIndex={-1} autoComplete="off" /></label></div>
             <input className="min-h-10 rounded-md border border-[#d8c2a6] px-3 outline-none ring-[#b86a32]/25 focus:ring-4" name="name" placeholder="Name" />
             <div className="grid gap-3 md:grid-cols-2">
               <input className="min-h-10 rounded-md border border-[#d8c2a6] px-3 outline-none ring-[#b86a32]/25 focus:ring-4" name="email" placeholder="Email" type="email" />

@@ -64,6 +64,10 @@ function getAdminClient() {
       persistSession: false
     },
     global: {
+      fetch: (input, init) => fetch(input, {
+        ...init,
+        signal: init?.signal ? AbortSignal.any([init.signal, AbortSignal.timeout(10_000)]) : AbortSignal.timeout(10_000)
+      }),
       headers: { "X-Client-Info": "conquistador-oil-crm" }
     }
   });
@@ -394,4 +398,20 @@ export async function checkSupabaseConnection() {
 
   if (error) throw databaseError("health check", error);
   return { backend: "supabase" as const, leadCount: count ?? 0 };
+}
+
+export async function checkPublicRateLimitSchema() {
+  const { error } = await getAdminClient().from("public_request_limits").select("key").limit(0);
+  if (error) throw databaseError("abuse protection schema", error);
+}
+
+export async function consumePublicRateLimit(key: string, limit: number, seconds: number) {
+  const { data, error } = await getAdminClient().rpc("consume_public_request_limit", {
+    p_key: key, p_limit: limit, p_seconds: seconds
+  });
+  if (error) throw databaseError("public request limit", error);
+  if (!data || typeof data.allowed !== "boolean" || !Number.isFinite(data.retryAfter) || data.retryAfter < 1) {
+    throw new Error("Invalid rate limit result.");
+  }
+  return data as { allowed: boolean; retryAfter: number };
 }

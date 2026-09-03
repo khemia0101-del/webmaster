@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createHash } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import { promises as fs } from "fs";
 import path from "path";
 import { seedStore } from "@/data/seed";
@@ -43,7 +43,9 @@ async function readLocalStore(): Promise<Store> {
     if (!parsed.learningRecords) parsed.learningRecords = [];
     if (!parsed.celinaActions) parsed.celinaActions = [];
     return parsed as Store;
-  } catch {
+  } catch (error) {
+    // Never replace corrupt/unreadable customer data with a seed store.
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
     await fs.mkdir(dataDir, { recursive: true });
     await fs.writeFile(runtimePath, JSON.stringify(seedStore, null, 2));
     return seedStore;
@@ -76,6 +78,8 @@ export async function recordEvent(
   }
 
   const store = await readLocalStore();
+  const existing = store.events.find((item) => item.id === event.id);
+  if (existing) return existing;
   store.events.unshift(event);
   await writeLocalStore(store);
   return event;
@@ -88,7 +92,7 @@ export async function createLead(form: FormData, fallbackType: LeadType) {
   const type = classifyLead(entries, fallbackType);
   const safetyCritical = isSafetyCritical(entries);
   const lead: Lead = {
-    id: `lead-${Date.now()}`,
+    id: `lead-${randomUUID()}`,
     createdAt: new Date().toISOString(),
     source: entries.source || "Website",
     type,

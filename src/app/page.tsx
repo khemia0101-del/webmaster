@@ -40,17 +40,17 @@ const trustImages = [
   {
     alt: "Heating oil delivery truck at a Lancaster home",
     label: "Heating oil delivery",
-    src: "/brand/heating-oil-delivery-lancaster.png"
+    src: "/brand/heating-oil-delivery-lancaster.webp"
   },
   {
     alt: "HVAC technician servicing heating equipment",
     label: "HVAC service",
-    src: "/brand/hvac-service-technician.png"
+    src: "/brand/hvac-service-technician.webp"
   },
   {
     alt: "Local Lancaster service building with work vans",
     label: "Lancaster service area",
-    src: "/brand/local-service-building.png"
+    src: "/brand/local-service-building.webp"
   }
 ];
 
@@ -149,7 +149,7 @@ export default async function Home() {
         <div className="grid gap-3 sm:grid-cols-3">
           {trustImages.map((image) => (
             <div className="overflow-hidden rounded-lg border border-[#d8c2a6] bg-[#071d32] shadow-sm" key={image.src}>
-              <Image alt={image.alt} className="h-48 w-full object-cover" height={900} src={image.src} width={1200} />
+              <Image alt={image.alt} className="h-48 w-full object-cover" height={900} src={image.src} width={1200} sizes="(max-width: 640px) 90vw, (max-width: 768px) 30vw, 18vw" />
             </div>
           ))}
         </div>
