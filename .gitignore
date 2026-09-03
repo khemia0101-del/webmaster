@@ -33,6 +33,7 @@ tsconfig.check.tsbuildinfo
 
 # --- Agent call history (local only, never publish transcripts) ---
 conquistador-oil-agent/data/
+archive/conquistador-oil-agent/data/
 *.db
 *.sqlite
 *.sqlite3
