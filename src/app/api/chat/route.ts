@@ -1,20 +1,12 @@
 import { NextResponse } from "next/server";
 import { routeLeadToRevenueDesk } from "@/lib/revenue-desk";
 import { createLead, recordEvent } from "@/lib/store";
-
-type ChatBody = {
-  name?: string;
-  email?: string;
-  phone?: string;
-  serviceType?: string;
-  zone?: string;
-  urgency?: string;
-  question?: string;
-};
+import { guardPublicRequest, publicJson, stringFields, publicErrorResponse } from "@/lib/public-request";
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json().catch(() => ({}))) as ChatBody;
+    await guardPublicRequest(request, "leads");
+    const body = stringFields(await publicJson(request), ["name", "email", "phone", "serviceType", "zone", "urgency", "question", "website"]);
     const question = String(body.question || "").trim();
     if (!question) {
       return NextResponse.json({ error: "Please enter your question." }, { status: 400 });
@@ -60,6 +52,8 @@ export async function POST(request: Request) {
         "Thanks. Conquistador Oil received your message. If this is urgent or involves no heat, please call (717) 397-9800."
     });
   } catch (err) {
+    const rejected = publicErrorResponse(err);
+    if (rejected) return rejected;
     await recordEvent({
       kind: "system_error",
       source: "API",

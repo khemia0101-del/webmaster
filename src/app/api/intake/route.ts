@@ -2,22 +2,14 @@ import { NextResponse } from "next/server";
 import { routeLeadToRevenueDesk } from "@/lib/revenue-desk";
 import { createLead, recordEvent } from "@/lib/store";
 import type { LeadType } from "@/lib/types";
-
-const allowed: LeadType[] = ["emergency", "commercial_audit", "contractor", "commercial_quote", "fuel", "property_manager", "hiring", "other"];
+import { guardPublicRequest, publicForm, publicErrorResponse } from "@/lib/public-request";
 
 export async function POST(request: Request) {
   let fallbackType: LeadType = "other";
   try {
-    const form = await request.formData();
+    await guardPublicRequest(request, "leads");
+    const form = await publicForm(request);
     fallbackType = String(form.get("fallbackType") || "other") as LeadType;
-    if (!allowed.includes(fallbackType)) {
-      await recordEvent({
-        kind: "form_error",
-        source: "Website",
-        label: `Unknown intake type: ${fallbackType}`
-      });
-      return NextResponse.json({ error: "Unknown intake type." }, { status: 400 });
-    }
     const lead = await createLead(form, fallbackType);
     await routeLeadToRevenueDesk(lead).catch((err) =>
       recordEvent({
@@ -35,6 +27,8 @@ export async function POST(request: Request) {
         : "Saved. Hermes classified the lead and queued the next approval step."
     });
   } catch (err) {
+    const rejected = publicErrorResponse(err);
+    if (rejected) return rejected;
     // Capture "what breaks" so the learning loop can surface friction hotspots.
     await recordEvent({
       kind: "system_error",

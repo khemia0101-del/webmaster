@@ -37,14 +37,16 @@ export function IntakeForm({
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const element = event.currentTarget;
     setStatus("submitting");
-    const form = new FormData(event.currentTarget);
+    const form = new FormData(element);
     form.set("fallbackType", type);
     form.set("source", new URLSearchParams(window.location.search).get("source") || source);
     form.set("experimentId", "home-hero-v1");
     form.set("variantId", readCookie("co_home_hero_variant") || "service-first");
+    try {
     const response = await fetch("/api/intake", { method: "POST", body: form });
-    const body = await response.json();
+    const body = await response.json().catch(() => ({}));
     if (!response.ok) {
       setStatus("error");
       setMessage(body.error || "The intake could not be saved.");
@@ -52,12 +54,17 @@ export function IntakeForm({
     }
     setStatus("done");
     setMessage(body.message);
-    event.currentTarget.reset();
+    element.reset();
+    } catch {
+      setStatus("error");
+      setMessage("We could not confirm receipt. Please call (717) 397-9800 before resubmitting.");
+    }
   }
 
   return (
     <form className="grid gap-4 rounded-lg border border-[#d8c2a6] bg-[#fff9ee] p-5 shadow-sm" onSubmit={onSubmit}>
       <input name="source" type="hidden" value={source} />
+      <div hidden aria-hidden="true"><label>Leave blank<input name="website" tabIndex={-1} autoComplete="off" /></label></div>
       <div className="grid gap-4 md:grid-cols-2">
         {fields.map((field) =>
           field.area ? (

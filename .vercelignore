@@ -6,3 +6,8 @@
 node_modules
 tsconfig.check.tsbuildinfo
 *.log
+archive
+docs
+RUN_APP.cmd
+RUN_APP.ps1
+supabase/tests

@@ -1,0 +1,16 @@
+begin;
+create extension if not exists pgtap with schema extensions;
+set local search_path = extensions, public;
+select plan(9);
+select ok((select relrowsecurity from pg_class where oid = 'public.public_request_limits'::regclass), 'rate limit table has RLS');
+select ok(not has_table_privilege('anon', 'public.public_request_limits', 'select'), 'anonymous cannot inspect rate limits');
+select ok(not has_function_privilege('anon', 'public.consume_public_request_limit(text,integer,integer)', 'execute'), 'anonymous cannot consume quotas directly');
+select ok(not has_function_privilege('authenticated', 'public.consume_public_request_limit(text,integer,integer)', 'execute'), 'signed-in users cannot consume quotas directly');
+select ok(has_function_privilege('service_role', 'public.consume_public_request_limit(text,integer,integer)', 'execute'), 'server role can enforce quotas');
+select is((public.consume_public_request_limit('leads:' || repeat('a', 64), 1, 900)->>'allowed')::boolean, true, 'first request admitted');
+select is((public.consume_public_request_limit('leads:' || repeat('a', 64), 1, 900)->>'allowed')::boolean, false, 'next request denied');
+update public.public_request_limits set resets_at = now() - interval '1 second' where key = 'leads:' || repeat('a', 64);
+select is((public.consume_public_request_limit('leads:' || repeat('a', 64), 1, 900)->>'allowed')::boolean, true, 'quota resets after expiry');
+select throws_ok($$select public.consume_public_request_limit('raw-ip', 10, 900)$$, 'P0001', 'Invalid request limit parameters', 'raw IP identifiers rejected');
+select * from finish();
+rollback;

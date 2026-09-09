@@ -12,7 +12,7 @@ export default function manifest(): MetadataRoute.Manifest {
     icons: [
       {
         src: "/brand/conquistador-oil-logo.png",
-        sizes: "907x818",
+        sizes: "512x462",
         type: "image/png"
       }
     ]

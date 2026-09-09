@@ -19,15 +19,16 @@ export function ExperimentBeacon({
   page: string;
 }) {
   useEffect(() => {
-    const key = `co_seen_${experimentId}_${variantId}`;
-    if (sessionStorage.getItem(key)) return;
-    sessionStorage.setItem(key, "1");
-    navigator.sendBeacon(
-      "/api/experiments/impression",
-      new Blob([JSON.stringify({ experimentId, variantId, page })], {
-        type: "application/json"
-      })
-    );
+    const assignedVariant = readCookie("co_home_hero_variant") || variantId;
+    const key = `co_seen_${experimentId}_${assignedVariant}_${Math.floor(Date.now() / 1_800_000)}`;
+    try { if (sessionStorage.getItem(key)) return; } catch { /* Storage can be disabled. */ }
+    void fetch("/api/experiments/impression", {
+      method: "POST", keepalive: true,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ experimentId, variantId: assignedVariant, page })
+    }).then((response) => {
+      if (response.ok) { try { sessionStorage.setItem(key, "1"); } catch { /* Server deduplicates. */ } }
+    }).catch(() => undefined);
   }, [experimentId, page, variantId]);
 
   useEffect(() => {
