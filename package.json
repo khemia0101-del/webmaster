@@ -12,7 +12,7 @@
     "dev": "node scripts/next-dev.mjs",
     "build": "node scripts/next-build.mjs",
     "start": "next start",
-    "test": "tsx --test src/lib/phone-routing.test.ts src/lib/vapi-outbound-policy.test.ts src/lib/contractor-discovery-policy.test.ts",
+    "test": "tsx --test src/lib/phone-routing.test.ts src/lib/vapi-outbound-policy.test.ts src/lib/contractor-discovery-policy.test.ts src/lib/monid-contractor-search.test.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.check.json",
     "db:import": "tsx scripts/import-supabase-store.ts",

@@ -6,6 +6,7 @@ import {
   type ContractorSearchInput
 } from "@/lib/contractor-discovery-policy";
 import { normalizeUsPhone } from "@/lib/vapi-outbound-policy";
+import { searchMonidContractors } from "@/lib/monid-contractor-search";
 
 type HermesCandidate = Record<string, unknown>;
 
@@ -77,6 +78,11 @@ function validatedCandidate(candidate: HermesCandidate): ContractorCandidate | n
 export async function findContractorCandidates(input: ContractorSearchInput) {
   const validated = validateContractorSearch(input);
   if (!validated.ok) throw new Error(validated.error);
+
+  if (process.env.MONID_API_KEY?.trim()) {
+    const candidates = await searchMonidContractors(validated.search.service, validated.search.location);
+    return { candidates, query: validated.search };
+  }
 
   const url = process.env.HERMES_REVENUE_DESK_WEBHOOK_URL?.trim();
   if (!url) throw new Error("HERMES_REVENUE_DESK_WEBHOOK_URL is not configured.");
