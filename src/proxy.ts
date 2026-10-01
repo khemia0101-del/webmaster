@@ -26,12 +26,13 @@ function adminAuthOk(request: NextRequest) {
   return decoded.slice(0, separator) === user && decoded.slice(separator + 1) === pass;
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   if (
     request.nextUrl.pathname.startsWith("/admin") ||
     request.nextUrl.pathname.startsWith("/api/admin") ||
     request.nextUrl.pathname.startsWith("/api/approvals") ||
-    request.nextUrl.pathname.startsWith("/api/export")
+    request.nextUrl.pathname.startsWith("/api/export") ||
+    request.nextUrl.pathname === "/api/celina/loop"
   ) {
     if (!adminAuthOk(request)) return unauthorized();
     return NextResponse.next();
@@ -64,5 +65,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/admin/:path*", "/api/admin/:path*", "/api/approvals/:path*", "/api/export/:path*"]
+  matcher: ["/", "/admin/:path*", "/api/admin/:path*", "/api/approvals/:path*", "/api/export/:path*", "/api/celina/loop"]
 };
